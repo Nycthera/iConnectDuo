@@ -7,12 +7,25 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		D99D711C2E5024D7002D24EA /* iConnectDuo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iConnectDuo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iConnectDuo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D93C4AFB2E51CDA000B0CF1E /* Exceptions for "iConnectDuo" folder in "iConnectDuo" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D99D711B2E5024D7002D24EA /* iConnectDuo */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D99D711E2E5024D7002D24EA /* iConnectDuo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D93C4AFB2E51CDA000B0CF1E /* Exceptions for "iConnectDuo" folder in "iConnectDuo" target */,
+			);
 			path = iConnectDuo;
 			sourceTree = "<group>";
 		};
@@ -33,16 +46,8 @@
 			isa = PBXGroup;
 			children = (
 				D99D711E2E5024D7002D24EA /* iConnectDuo */,
-				D99D711D2E5024D7002D24EA /* Products */,
+				D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */,
 			);
-			sourceTree = "<group>";
-		};
-		D99D711D2E5024D7002D24EA /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				D99D711C2E5024D7002D24EA /* iConnectDuo.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -67,7 +72,7 @@
 			packageProductDependencies = (
 			);
 			productName = iConnectDuo;
-			productReference = D99D711C2E5024D7002D24EA /* iConnectDuo.app */;
+			productReference = D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -95,7 +100,7 @@
 			mainGroup = D99D71132E5024D7002D24EA;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = D99D711D2E5024D7002D24EA /* Products */;
+			productRefGroup = D99D71132E5024D7002D24EA;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -253,9 +258,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = CKYWQ7BW84;
+				DEVELOPMENT_TEAM = 4PP5ZD3GV5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iConnectDuo/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -266,7 +272,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = team.iConnect.app;
+				PRODUCT_BUNDLE_IDENTIFIER = team.iConnectDuo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -281,9 +287,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = CKYWQ7BW84;
+				DEVELOPMENT_TEAM = 4PP5ZD3GV5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iConnectDuo/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -294,7 +301,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = team.iConnect.app;
+				PRODUCT_BUNDLE_IDENTIFIER = team.iConnectDuo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
