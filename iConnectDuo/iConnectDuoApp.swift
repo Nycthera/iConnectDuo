@@ -15,3 +15,8 @@ struct iConnectDuoApp: App {
         }
     }
 }
+
+
+#Preview {
+    ContentView()
+}

@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation
+import NearbyInteraction
 
 struct ContentView: View {
     @State private var username: String = ""
@@ -214,15 +216,35 @@ struct QuizRulesPart: View {
     }
 }
                 
+
 struct QuizQ1: View {
+    @State private var tokenMessage: String = "No token yet"
+    
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
             Text("Chris Gay")
                 .font(.largeTitle)
+            
+            Text(tokenMessage) // 👈 show token state
+                .font(.body)
+                .foregroundColor(.gray)
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            checkCameraPermission()
+            setupNearbyInteraction()
+            
+            // Save token if available
+            if let token = niToken {
+                saveNITokenToUserDefaults(token)
+                tokenMessage = "Token saved: \(token)"
+            } else {
+                tokenMessage = "No discovery token available"
+            }
+        }
     }
 }
+
 #Preview {
     ContentView()
 }
