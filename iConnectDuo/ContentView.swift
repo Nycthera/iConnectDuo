@@ -104,6 +104,10 @@ struct ContentView: View {
                     }
                     
                     .padding()
+                    .onAppear {
+                        requestNotificationPermission()
+                        testNotification()
+                    }
                 }
             }
         }
@@ -218,14 +222,102 @@ struct QuizRulesPart: View {
                 
 
 struct QuizQ1: View {
+    struct Question {
+        let text: String
+        let options: [String]
+    }
     @State private var tokenMessage: String = "No token yet"
+    
+    let personalityQuestions: [Question] = [
+        Question(
+            text: "How do you usually spend your free time?",
+            options: ["Reading or studying", "Hanging out with friends", "Playing video games", "Exercising or sports"]
+        ),
+        Question(
+            text: "How do you handle conflict?",
+            options: ["Stay calm and analyze", "Express feelings openly", "Avoid it", "Confront directly"]
+        ),
+        Question(
+            text: "Which environment makes you most productive?",
+            options: ["Quiet and alone", "Background noise or music", "Team environment", "Outdoors or moving around"]
+        ),
+        Question(
+            text: "Are you more:",
+            options: ["Introverted", "Extroverted", "Ambiverted", "Depends on the situation"]
+        ),
+        Question(
+            text: "How do you make decisions?",
+            options: ["Logically and rationally", "Based on intuition", "Ask friends/family for advice", "Go with the flow"]
+        ),
+        Question(
+            text: "What kind of humor do you enjoy most?",
+            options: ["Witty and clever", "Slapstick or silly", "Dark or sarcastic", "Light and friendly"]
+        ),
+        Question(
+            text: "What motivates you the most?",
+            options: ["Achievement and success", "Helping others", "Learning and curiosity", "Fun and excitement"]
+        ),
+        Question(
+            text: "Do you prefer to plan or be spontaneous?",
+            options: ["Plan everything in advance", "Mostly plan but leave room for fun", "Go with the flow", "Completely spontaneous"]
+        ),
+        Question(
+            text: "How do you usually react to stress?",
+            options: ["Stay calm and focus", "Talk it out with friends", "Withdraw and reflect", "Get anxious easily"]
+        ),
+        Question(
+            text: "Which describes your social style best?",
+            options: ["Enjoy small groups", "Love big gatherings", "Mix of both", "Prefer online interactions"]
+        ),
+        Question(
+            text: "How do you approach new challenges?",
+            options: ["Carefully analyze", "Jump right in", "Ask for advice", "Avoid if possible"]
+        ),
+        Question(
+            text: "Which kind of activities do you enjoy most?",
+            options: ["Creative/artistic", "Physical/sports", "Intellectual/puzzle", "Relaxing/social"]
+        ),
+        Question(
+            text: "Do you prefer working:",
+            options: ["Independently", "In a team", "Depends on the task", "I avoid work!"]
+        ),
+        Question(
+            text: "How do you express your emotions?",
+            options: ["Openly and clearly", "Mostly internally", "Depends on the person", "Through humor or jokes"]
+        ),
+        Question(
+            text: "Are you more:",
+            options: ["Optimistic", "Realistic", "Pessimistic", "Depends on the situation"]
+        ),
+        Question(
+            text: "How often do you try new things?",
+            options: ["All the time", "Sometimes", "Rarely", "Never"]
+        ),
+        Question(
+            text: "What’s your approach to conflict in relationships?",
+            options: ["Direct and honest", "Diplomatic and careful", "Avoid confrontation", "Depends on the situation"]
+        ),
+        Question(
+            text: "Which do you value most in friends?",
+            options: ["Loyalty", "Fun", "Honesty", "Support"]
+        ),
+        Question(
+            text: "Do you consider yourself more:",
+            options: ["Logical", "Emotional", "Creative", "Balanced"]
+        ),
+        Question(
+            text: "How do you usually spend weekends?",
+            options: ["Relaxing at home", "Going out with friends", "Trying new experiences", "Catching up on work/study"]
+        )
+    ]
+
     
     var body: some View {
         VStack(spacing: 20) {
-            Text("Chris Gay")
+            Text("Chris ") // <- quiz part eh
                 .font(.largeTitle)
-            
-            Text(tokenMessage) // 👈 show token state
+                
+            Text(tokenMessage)
                 .font(.body)
                 .foregroundColor(.gray)
         }

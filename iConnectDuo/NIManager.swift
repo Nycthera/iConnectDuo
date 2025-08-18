@@ -1,5 +1,6 @@
 import AVFoundation
 import NearbyInteraction
+import UserNotifications
 
 // MARK: - Globals
 var niSession: NISession?
@@ -71,4 +72,46 @@ class NIHandler: NSObject, NISessionDelegate {
 
 func getOtherDeviceToken() {
     // add functions here 
+}
+
+
+func testNotification() {
+    // 1. Create the notification content
+    let content = UNMutableNotificationContent()
+    content.title = "Test Notification" 
+    content.body = "This is a test notification from your app!"
+    content.sound = .default
+    
+    // 2. Trigger after 5 seconds
+    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+    
+    // 3. Create a request
+    let request = UNNotificationRequest(
+        identifier: UUID().uuidString,
+        content: content,
+        trigger: trigger
+    )
+    
+    // 4. Add request to the notification center
+    UNUserNotificationCenter.current().add(request) { error in
+        if let error = error {
+            print("Error scheduling notification: \(error.localizedDescription)")
+        } else {
+            print("Test notification scheduled!")
+        }
+    }
+}
+
+func requestNotificationPermission() {
+    let center = UNUserNotificationCenter.current()
+    center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+        if granted {
+            print("Notifications permission granted ✅")
+        } else {
+            print("Notifications permission denied ❌")
+            if let error = error {
+                print("Error: \(error.localizedDescription)")
+            }
+        }
+    }
 }
