@@ -219,14 +219,20 @@ struct QuizView: View {
     var body: some View {
         VStack {
             if quizCompleted {
-                VStack(spacing: 20) {
-                    Text("🎉 Quiz Completed!")
-                        .font(.largeTitle)
-                        .bold()
-                    Text("Thanks for participating. Your answers have been recorded.")
-                        .multilineTextAlignment(.center)
-                        .padding()
+
+                VStack {
+                    HStack {
+                        Spacer()
+                        Text("🎉 Quiz Completed!")
+                            .font(.title)
+                            .bold()
+                            .padding(.trailing, 30)
+                    }
+                        .padding(.top, 40)
+                    Spacer()
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity).navigationBarBackButtonHidden(true)
+                
             } else if !quizQuestions.isEmpty {
                 let currentQuestion = quizQuestions[currentIndex]
                 
