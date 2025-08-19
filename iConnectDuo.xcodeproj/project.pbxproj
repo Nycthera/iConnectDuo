@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D98044772E5494B9007B7A17 /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = D98044762E5494B9007B7A17 /* Appwrite */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iConnectDuo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -21,6 +25,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		D98044722E5493B6007B7A17 /* Sources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Sources;
+			sourceTree = "<group>";
+		};
 		D99D711E2E5024D7002D24EA /* iConnectDuo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -36,6 +45,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D98044772E5494B9007B7A17 /* Appwrite in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,6 +55,7 @@
 		D99D71132E5024D7002D24EA = {
 			isa = PBXGroup;
 			children = (
+				D98044722E5493B6007B7A17 /* Sources */,
 				D99D711E2E5024D7002D24EA /* iConnectDuo */,
 				D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */,
 			);
@@ -66,10 +77,12 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				D98044722E5493B6007B7A17 /* Sources */,
 				D99D711E2E5024D7002D24EA /* iConnectDuo */,
 			);
 			name = iConnectDuo;
 			packageProductDependencies = (
+				D98044762E5494B9007B7A17 /* Appwrite */,
 			);
 			productName = iConnectDuo;
 			productReference = D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */;
@@ -99,6 +112,9 @@
 			);
 			mainGroup = D99D71132E5024D7002D24EA;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D98044752E5494B9007B7A17 /* XCRemoteSwiftPackageReference "sdk-for-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D99D71132E5024D7002D24EA;
 			projectDirPath = "";
@@ -335,6 +351,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D98044752E5494B9007B7A17 /* XCRemoteSwiftPackageReference "sdk-for-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/appwrite/sdk-for-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D98044762E5494B9007B7A17 /* Appwrite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D98044752E5494B9007B7A17 /* XCRemoteSwiftPackageReference "sdk-for-swift" */;
+			productName = Appwrite;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D99D71142E5024D7002D24EA /* Project object */;
 }

@@ -1,6 +1,7 @@
 import AVFoundation
 import NearbyInteraction
 import UserNotifications
+import Appwrite
 
 // MARK: - Globals
 var niSession: NISession?
@@ -76,31 +77,24 @@ func getOtherDeviceToken() {
 
 
 func testNotification() {
-    // 1. Create the notification content
     let content = UNMutableNotificationContent()
-    content.title = "Test Notification" 
-    content.body = "This is a test notification from your app!"
+    content.title = "Hello!"
+    content.body = "This is a test notification."
     content.sound = .default
-    
-    // 2. Trigger after 5 seconds
+
+    // Trigger after 5 seconds
     let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
     
-    // 3. Create a request
-    let request = UNNotificationRequest(
-        identifier: UUID().uuidString,
-        content: content,
-        trigger: trigger
-    )
-    
-    // 4. Add request to the notification center
+
+    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+
     UNUserNotificationCenter.current().add(request) { error in
         if let error = error {
             print("Error scheduling notification: \(error.localizedDescription)")
-        } else {
-            print("Test notification scheduled!")
         }
     }
 }
+
 
 func requestNotificationPermission() {
     let center = UNUserNotificationCenter.current()
@@ -115,3 +109,16 @@ func requestNotificationPermission() {
         }
     }
 }
+
+class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationHandler()
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler:
+                                    @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Show notification as banner + play sound even when app is open
+        completionHandler([.banner, .sound])
+    }
+}
+
