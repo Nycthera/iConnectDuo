@@ -1,4 +1,4 @@
 .env
 .appwrite
 .DS_store
-
+Config.xcconfig

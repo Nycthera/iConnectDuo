@@ -2,16 +2,15 @@
 //  Functions.swift
 //  iConnectDuo
 //
-//  Created by Chris  on 19/8/25.
+//  Created by Chris on 19/8/25.
 //
-
 
 import AVFoundation
 import NearbyInteraction
 import UserNotifications
 import Appwrite
-import SwiftDotenv
 import UIKit
+
 // MARK: - Globals
 var niSession: NISession?
 var niToken: NIDiscoveryToken?
@@ -81,21 +80,20 @@ class NIHandler: NSObject, NISessionDelegate {
 }
 
 func getOtherDeviceToken() {
-    // add functions here 
+    // add functions here
 }
 
-
+// MARK: - Notifications
 func testNotification() {
     let content = UNMutableNotificationContent()
     content.title = "Hello!"
     content.body = "This is a test notification."
     content.sound = .default
 
-    // Trigger after 5 seconds
     let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
-    
-
-    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+    let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                        content: content,
+                                        trigger: trigger)
 
     UNUserNotificationCenter.current().add(request) { error in
         if let error = error {
@@ -103,7 +101,6 @@ func testNotification() {
         }
     }
 }
-
 
 func requestNotificationPermission() {
     let center = UNUserNotificationCenter.current()
@@ -126,48 +123,26 @@ class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler:
                                     @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Show notification as banner + play sound even when app is open
         completionHandler([.banner, .sound])
     }
 }
 
-func grabApiKey() -> String {
-    do {
-        try Dotenv.configure(atPath: "/Users/tkrobot/Documents/iConnectDuo/iConnectDuo/.env")
-        guard let keyValue = Dotenv["apiKey"] else { fatalError("API key missing") }
-        switch keyValue {
-        case .string(let str): return str
-        default: fatalError("API key in .env is not a string")
-        }
-    } catch {
-        fatalError("Error loading .env: \(error)")
+// MARK: - Config helpers
+func getConfigValue(for key: String) -> String {
+    guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String else {
+        fatalError("Missing config value for key: \(key)")
     }
+    return value
+}
+
+func grabApiKey() -> String {
+    return getConfigValue(for: "apiKey")
 }
 
 // MARK: - Save quiz answers to Appwrite
 func saveAnswersToAppwrite(selectedAnswers: [UUID: String]) async {
-    // Load database and collection IDs
-    let databaseId: String
-    let collectionId: String
-    
-    do {
-        try Dotenv.configure(atPath: "/Users/tkrobot/Documents/iConnectDuo/iConnectDuo/.env")
-        
-        guard let dbValue = Dotenv["appwriteDatabaseID"] else { fatalError("Database ID missing") }
-        switch dbValue {
-        case .string(let str): databaseId = str
-        default: fatalError("Database ID is not a string")
-        }
-        
-        guard let colValue = Dotenv["appwriteCollectionID"] else { fatalError("Collection ID missing") }
-        switch colValue {
-        case .string(let str): collectionId = str
-        default: fatalError("Collection ID is not a string")
-        }
-        
-    } catch {
-        fatalError("Error loading .env: \(error)")
-    }
+    let databaseId = getConfigValue(for: "appwriteDatabaseID")
+    let collectionId = getConfigValue(for: "appwriteCollectionID")
     
     // User ID
     let userID = await UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
@@ -179,19 +154,16 @@ func saveAnswersToAppwrite(selectedAnswers: [UUID: String]) async {
     // First element is userID
     answersArray.append(userID)
     
-    // Add each question-answer pair as a string
     for (index, question) in allQuestions.enumerated() {
         let answer = selectedAnswers[question.id] ?? "NA"
-        let answerString = "q\(index+1): \(answer)"
-        answersArray.append(answerString)
+        answersArray.append("q\(index+1): \(answer)")
     }
     
-    let documentData: [String: Any] = await [
-        "userID": UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString, // top-level userID
-        "userAnswers": answersArray // array of strings like ["q1: answer", "q2: NA", ...]
+    let documentData: [String: Any] = [
+        "userID": userID,
+        "userAnswers": answersArray
     ]
 
-    
     let databases = Databases(AppwriteService.shared.client)
     
     do {
@@ -206,3 +178,4 @@ func saveAnswersToAppwrite(selectedAnswers: [UUID: String]) async {
         print("Error saving document:", error)
     }
 }
+

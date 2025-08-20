@@ -26,11 +26,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		D98044722E5493B6007B7A17 /* Sources */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Sources;
-			sourceTree = "<group>";
-		};
 		D99D711E2E5024D7002D24EA /* iConnectDuo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -57,7 +52,6 @@
 		D99D71132E5024D7002D24EA = {
 			isa = PBXGroup;
 			children = (
-				D98044722E5493B6007B7A17 /* Sources */,
 				D99D711E2E5024D7002D24EA /* iConnectDuo */,
 				D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */,
 			);
@@ -79,7 +73,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				D98044722E5493B6007B7A17 /* Sources */,
 				D99D711E2E5024D7002D24EA /* iConnectDuo */,
 			);
 			name = iConnectDuo;
@@ -273,6 +266,8 @@
 		};
 		D99D71282E5024DB002D24EA /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = D99D711E2E5024D7002D24EA /* iConnectDuo */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -304,6 +299,8 @@
 		};
 		D99D71292E5024DB002D24EA /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = D99D711E2E5024D7002D24EA /* iConnectDuo */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
