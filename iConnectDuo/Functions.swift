@@ -1,8 +1,17 @@
+//
+//  Functions.swift
+//  iConnectDuo
+//
+//  Created by Chris  on 19/8/25.
+//
+
+
 import AVFoundation
 import NearbyInteraction
 import UserNotifications
 import Appwrite
-
+import SwiftDotenv
+import UIKit
 // MARK: - Globals
 var niSession: NISession?
 var niToken: NIDiscoveryToken?
@@ -100,9 +109,9 @@ func requestNotificationPermission() {
     let center = UNUserNotificationCenter.current()
     center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
         if granted {
-            print("Notifications permission granted ✅")
+            print("Notifications permission granted")
         } else {
-            print("Notifications permission denied ❌")
+            print("Notifications permission denied")
             if let error = error {
                 print("Error: \(error.localizedDescription)")
             }
@@ -122,3 +131,78 @@ class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
     }
 }
 
+func grabApiKey() -> String {
+    do {
+        try Dotenv.configure(atPath: "/Users/tkrobot/Documents/iConnectDuo/iConnectDuo/.env")
+        guard let keyValue = Dotenv["apiKey"] else { fatalError("API key missing") }
+        switch keyValue {
+        case .string(let str): return str
+        default: fatalError("API key in .env is not a string")
+        }
+    } catch {
+        fatalError("Error loading .env: \(error)")
+    }
+}
+
+// MARK: - Save quiz answers to Appwrite
+func saveAnswersToAppwrite(selectedAnswers: [UUID: String]) async {
+    // Load database and collection IDs
+    let databaseId: String
+    let collectionId: String
+    
+    do {
+        try Dotenv.configure(atPath: "/Users/tkrobot/Documents/iConnectDuo/iConnectDuo/.env")
+        
+        guard let dbValue = Dotenv["appwriteDatabaseID"] else { fatalError("Database ID missing") }
+        switch dbValue {
+        case .string(let str): databaseId = str
+        default: fatalError("Database ID is not a string")
+        }
+        
+        guard let colValue = Dotenv["appwriteCollectionID"] else { fatalError("Collection ID missing") }
+        switch colValue {
+        case .string(let str): collectionId = str
+        default: fatalError("Collection ID is not a string")
+        }
+        
+    } catch {
+        fatalError("Error loading .env: \(error)")
+    }
+    
+    // User ID
+    let userID = await UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+    
+    // Map answers for all questions
+    let allQuestions = await QuizView().allQuestions
+    var answersArray: [String] = []
+    
+    // First element is userID
+    answersArray.append(userID)
+    
+    // Add each question-answer pair as a string
+    for (index, question) in allQuestions.enumerated() {
+        let answer = selectedAnswers[question.id] ?? "NA"
+        let answerString = "q\(index+1): \(answer)"
+        answersArray.append(answerString)
+    }
+    
+    let documentData: [String: Any] = await [
+        "userID": UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString, // top-level userID
+        "userAnswers": answersArray // array of strings like ["q1: answer", "q2: NA", ...]
+    ]
+
+    
+    let databases = Databases(AppwriteService.shared.client)
+    
+    do {
+        let document = try await databases.createDocument(
+            databaseId: databaseId,
+            collectionId: collectionId,
+            documentId: "unique()",
+            data: documentData
+        )
+        print("Document saved successfully:", document)
+    } catch {
+        print("Error saving document:", error)
+    }
+}

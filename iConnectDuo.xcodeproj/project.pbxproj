@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D922A1502E55C3C500CC4206 /* SwiftDotenv in Frameworks */ = {isa = PBXBuildFile; productRef = D922A14F2E55C3C500CC4206 /* SwiftDotenv */; };
 		D98044772E5494B9007B7A17 /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = D98044762E5494B9007B7A17 /* Appwrite */; };
 /* End PBXBuildFile section */
 
@@ -45,6 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D922A1502E55C3C500CC4206 /* SwiftDotenv in Frameworks */,
 				D98044772E5494B9007B7A17 /* Appwrite in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -83,6 +85,7 @@
 			name = iConnectDuo;
 			packageProductDependencies = (
 				D98044762E5494B9007B7A17 /* Appwrite */,
+				D922A14F2E55C3C500CC4206 /* SwiftDotenv */,
 			);
 			productName = iConnectDuo;
 			productReference = D93C4AF72E51C84300B0CF1E /* iConnectDuo.app */;
@@ -114,6 +117,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D98044752E5494B9007B7A17 /* XCRemoteSwiftPackageReference "sdk-for-swift" */,
+				D922A14E2E55C3C500CC4206 /* XCRemoteSwiftPackageReference "swift-dotenv" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D99D71132E5024D7002D24EA;
@@ -353,6 +357,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D922A14E2E55C3C500CC4206 /* XCRemoteSwiftPackageReference "swift-dotenv" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/thebarndog/swift-dotenv.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.0;
+			};
+		};
 		D98044752E5494B9007B7A17 /* XCRemoteSwiftPackageReference "sdk-for-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/appwrite/sdk-for-swift";
@@ -364,6 +376,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		D922A14F2E55C3C500CC4206 /* SwiftDotenv */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D922A14E2E55C3C500CC4206 /* XCRemoteSwiftPackageReference "swift-dotenv" */;
+			productName = SwiftDotenv;
+		};
 		D98044762E5494B9007B7A17 /* Appwrite */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D98044752E5494B9007B7A17 /* XCRemoteSwiftPackageReference "sdk-for-swift" */;

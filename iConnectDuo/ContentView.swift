@@ -1,14 +1,21 @@
+//
+//  ContentView.swift
+//  iConnectDuo
+//
+//  Created by Chris  on 19/8/25.
+//
+
 import SwiftUI
 import AVFoundation
 import NearbyInteraction
-
+import SwiftDotenv
 struct ContentView: View {
     @State private var username: String = ""
     @State private var selectedQ1: Int? = nil
     @State private var selectedQ2: Int? = nil
     @State private var showQuizRules = false
     @State private var deviceID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
-
+    
     var body: some View {
         
         NavigationStack {
@@ -87,7 +94,9 @@ struct ContentView: View {
                         requestNotificationPermission()
                         testNotification()
                         setupNearbyInteraction()
-                        print("han you are a bloody failure to code the stuff so i coded a temp quiz part now be a good boy")
+                        let key = grabApiKey()
+                        print("API key grabbed: \(key)")
+                        
                         
                     }
                 }
@@ -215,80 +224,110 @@ struct QuizView: View {
     @State private var currentIndex: Int = 0
     @State private var selectedAnswers: [UUID: String] = [:]
     @State private var quizCompleted = false
+    @State private var isSaving = false
+    @State private var showFinishedView = false
     
     var body: some View {
-        VStack {
-            if quizCompleted {
-
-                VStack {
-                    HStack {
-                        Spacer()
-                        Text("🎉 Quiz Completed!")
-                            .font(.title)
+        NavigationStack {
+            VStack {
+                if showFinishedView {
+                    FinishedView()
+                } else if !quizQuestions.isEmpty {
+                    let currentQuestion = quizQuestions[currentIndex]
+                    
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Question \(currentIndex + 1) of \(quizQuestions.count)")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                        Text(currentQuestion.text)
+                            .font(.title2)
                             .bold()
-                            .padding(.trailing, 30)
-                    }
-                        .padding(.top, 40)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity).navigationBarBackButtonHidden(true)
-                
-            } else if !quizQuestions.isEmpty {
-                let currentQuestion = quizQuestions[currentIndex]
-                
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Question \(currentIndex + 1) of \(quizQuestions.count)")
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                    
-                    Text(currentQuestion.text)
-                        .font(.title2)
-                        .bold()
-                    
-                    ForEach(currentQuestion.options, id: \.self) { option in
-                        Button(action: { selectedAnswers[currentQuestion.id] = option }) {
-                            HStack {
-                                Text(option).foregroundColor(.black)
-                                Spacer()
-                                if selectedAnswers[currentQuestion.id] == option {
-                                    Image(systemName: "checkmark.circle.fill").foregroundColor(.blue)
+                        
+                        ForEach(currentQuestion.options, id: \.self) { option in
+                            Button(action: {
+                                selectedAnswers[currentQuestion.id] = option
+                            }) {
+                                HStack {
+                                    Text(option)
+                                        .foregroundColor(.black)
+                                    Spacer()
+                                    if selectedAnswers[currentQuestion.id] == option {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.2)))
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        HStack {
+                            if currentIndex > 0 {
+                                Button("Back") { currentIndex -= 1 }
+                                    .frame(width: 100, height: 50)
+                                    .background(Color.gray.opacity(0.3))
+                                    .cornerRadius(10)
+                            }
+                            Spacer()
+                            Button(currentIndex == quizQuestions.count - 1 ? "Finish" : "Next") {
+                                if currentIndex < quizQuestions.count - 1 {
+                                    currentIndex += 1
+                                } else {
+                                    finishQuiz()
                                 }
                             }
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.2)))
+                            .frame(width: 120, height: 50)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                         }
                     }
-                    
-                    Spacer()
-                    
-                    HStack {
-                        if currentIndex > 0 {
-                            Button("Back") { currentIndex -= 1 }
-                                .frame(width: 100, height: 50)
-                                .background(Color.gray.opacity(0.3))
-                                .cornerRadius(10)
-                        }
-                        Spacer()
-                        Button(currentIndex == quizQuestions.count - 1 ? "Finish" : "Next") {
-                            if currentIndex < quizQuestions.count - 1 {
-                                currentIndex += 1
-                            } else {
-                                quizCompleted = true
-                            }
-                        }
-                        .frame(width: 120, height: 50)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                    }
+                    .padding()
                 }
-                .padding()
+            }
+            .onAppear {
+                quizQuestions = Array(allQuestions.shuffled().prefix(7))
             }
         }
-        .onAppear { quizQuestions = Array(allQuestions.shuffled().prefix(7)) }
+    }
+    
+    func finishQuiz() {
+        isSaving = true
+        
+        Task {
+            await saveAnswersToAppwrite(selectedAnswers: selectedAnswers)
+            isSaving = false
+            showFinishedView = true
+        }
     }
 }
+
+// MARK: - Finished View
+struct FinishedView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "checkmark.seal.fill")
+                .resizable()
+                .frame(width: 100, height: 100)
+                .foregroundColor(.green)
+            Text("🎉 Quiz Completed!")
+                .font(.largeTitle)
+                .bold()
+            Text("Your answers have been saved successfully.")
+                .font(.title2)
+                .foregroundColor(.gray)
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+
 
 #Preview {
     ContentView()

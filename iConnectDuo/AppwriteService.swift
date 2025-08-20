@@ -6,6 +6,7 @@
 //
 
 import Appwrite
+import SwiftDotenv
 
 class AppwriteService {
     static let shared = AppwriteService()
@@ -13,20 +14,10 @@ class AppwriteService {
     let client = Client()
     
     private init() {
+        let apiKey = grabApiKey()
         client
-            .setEndpoint("https://nyc.cloud.appwrite.io/v1") // Your Appwrite endpoint
-            .setProject("68a45c19002558882211") // Your Appwrite project ID
-            .setKey("")
-    }
-    
-    // Ping function
-    func sendPing() async -> (Bool, String) {
-        let health = Health(client)
-        do {
-            let response = try await health.get()
-            return (true, "Ping successful: \(response)")
-        } catch {
-            return (false, "Ping failed: \(error.localizedDescription)")
-        }
+            .setEndpoint("https://nyc.cloud.appwrite.io/v1") // Replace with your endpoint
+            .setProject("68a45c19002558882211")              // Replace with your project ID
+            .setKey(apiKey)
     }
 }
