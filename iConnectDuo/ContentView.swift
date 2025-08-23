@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  iConnectDuo
-//
-//  Created by Chris  on 19/8/25.
-//
-
 import SwiftUI
 import AVFoundation
 import NearbyInteraction
@@ -250,7 +243,7 @@ struct QuizView: View {
                             }) {
                                 HStack {
                                     Text(option)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.gray)
                                     Spacer()
                                     if selectedAnswers[currentQuestion.id] == option {
                                         Image(systemName: "checkmark.circle.fill")
@@ -299,43 +292,103 @@ struct QuizView: View {
         isSaving = true
         
         Task {
-            await saveAnswersToAppwrite(selectedAnswers: selectedAnswers, questions: quizQuestions)
+            await saveAnswersToAppwrite(selectedAnswers: selectedAnswers)
             isSaving = false
             showFinishedView = true
         }
     }
-    
 }
 
 // MARK: - Finished View
 struct FinishedView: View {
+    @State private var showFirst = false
+    @State private var showSecond = false
+    @State private var showThird = false
+    @State private var showFourth = false
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Image(systemName: "checkmark.seal.fill")
-                .resizable()
-                .frame(width: 100, height: 100)
-                .foregroundColor(.green)
-            Text("🎉 Quiz Completed!")
-                .font(.largeTitle)
-                .bold()
-            Text("Your answers have been saved successfully.")
-                .font(.title2)
-                .foregroundColor(.gray)
-            Spacer()
-        }
-        .padding()
-        .onAppear{
-            func grabAnswers() {
-                Task {
-                    await fetchAnswersFromAppwrite()
+        NavigationStack {
+            VStack(spacing:30){
+                if showFirst {
+                    (
+                        Text("Thank You! ") .foregroundColor(.blue).fontWeight(.bold) +
+                        Text("The Quiz is now completed") .fontWeight(.bold)
+                    )
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .font(.title2)
+                    .opacity(showFirst ? 1 : 0)
+                    .transition(.opacity)
+                    .frame(width: 300)
+                    .navigationBarBackButtonHidden(true)
+                    
+                }
+                if showSecond {
+                    (
+                        Text("How ") .foregroundColor(.blue).fontWeight(.bold) +
+                        Text("does this app work?") .fontWeight(.bold)
+                    )
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .font(.title2)
+                    .opacity(showSecond ? 1 : 0)
+                    .transition(.opacity)
+                    .frame(width: 300)
+                }
+                if showThird {
+                    (
+                        Text("Using your ") .fontWeight(.bold) + Text("GPS ") .foregroundColor(.blue).fontWeight(.bold) + Text(", iConnect Duo will ") .fontWeight(.bold) + Text("search ") .foregroundColor(.blue).fontWeight(.bold) + Text("for people which  ") .fontWeight(.bold) + Text("match ") .foregroundColor(.blue).fontWeight(.bold) + Text("with you.") .fontWeight(.bold)
+                        
+                    )
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.title2)
+                    .opacity(showSecond ? 1 : 0)
+                    .transition(.opacity)
+                    .frame(width: 300)
+                }
+                if showFourth {
+                    (
+                        Text("When another user who matches with you comes ") .fontWeight(.bold) +
+                        Text("near you") .foregroundColor(.blue).fontWeight(.bold) +
+                        Text(", your phone will start ") .fontWeight(.bold) +
+                        Text("ringing") .foregroundColor(.blue).fontWeight(.bold) +
+                        Text(", signals that your match is ") .fontWeight(.bold) +
+                        Text("near") .foregroundColor(.blue).fontWeight(.bold)
+                    )
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .font(.title2)
+                    .opacity(showSecond ? 1 : 0)
+                    .transition(.opacity)
+                    .frame(width: 300)
+                }
+            }
+            .onAppear {
+                
+                withAnimation(.easeIn(duration: 1)) {
+                    showFirst = true
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeIn(duration: 1)) {
+                        showSecond = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        withAnimation(.easeIn(duration: 1)) {
+                            showThird = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation(.easeIn(duration: 1)) {
+                                showFourth = true
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-    
 }
-
 #Preview {
     ContentView()
 }
+
