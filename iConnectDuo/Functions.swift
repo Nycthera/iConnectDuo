@@ -10,6 +10,7 @@ import NearbyInteraction
 import UserNotifications
 import Appwrite
 import UIKit
+import MultipeerConnectivity
 
 // MARK: - Globals
 var niSession: NISession?
@@ -173,3 +174,33 @@ func saveAnswersToAppwrite(selectedAnswers: [UUID: String], questions: [QuizView
         print("Error saving document:", error)
     }
 }
+
+func fetchAnswersFromAppwrite() async {
+    let databaseId = getConfigValue(for: "appwriteDatabaseID")
+    let collectionId = getConfigValue(for: "appwriteCollectionID")
+    let deviceID = await UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+    let databases = Databases(AppwriteService.shared.client)
+    do {
+        let documents = try await databases.listDocuments(
+            databaseId: databaseId,
+            collectionId: collectionId,
+            queries: [
+                Query.equal("userID", value: deviceID)
+            ]
+        )
+
+        if documents.documents.isEmpty {
+            print("No documents found for userID: \(deviceID)")
+        } else {
+            for doc in documents.documents {
+                print("Document ID: \(doc.id)")
+                print("Data: \(doc.data)")
+            }
+        }
+    }
+    catch {
+        print("Error with grabbing documents: \(error)")
+    }
+
+}
+

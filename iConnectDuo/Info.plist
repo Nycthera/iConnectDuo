@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>We need local network usage for Multipeer Connectivity</string>
 	<key>appwriteCollectionID</key>
 	<string>68a59456002a3091735d</string>
 	<key>appwriteDatabaseID</key>
 	<string>68a5944f0006ab9ec718</string>
-	<key>apiKey</key>
-	<string>standard_b8be234d01f61ff702d04a62f66b9d5853e62d402374be24bea419cb73318aa6a0460cdd11202e065f92402a4cecc65cdd3a4325682bb331e041870823d938ffadd8f187d305da7b0376639049817b0befcb82592f7be1b562b803794a8d5da42da89b814201d992cb68c6427c844334f03d49e7a7e446950da3b649c0928ab5</string>
 	<key>NSCameraUsageDescription</key>
 	<string>We need camera access to take photos.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -18,6 +18,11 @@
 	<array>
 		<string>remote-notification</string>
 		<string>nearby-interaction</string>
+	</array>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_iConnectDuoApp._tcp</string>
+		<string>_iConnectDuoApp._udp</string>
 	</array>
 </dict>
 </plist>

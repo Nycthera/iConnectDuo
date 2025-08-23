@@ -325,10 +325,16 @@ struct FinishedView: View {
             Spacer()
         }
         .padding()
+        .onAppear{
+            func grabAnswers() {
+                Task {
+                    await fetchAnswersFromAppwrite()
+                }
+            }
+        }
     }
+    
 }
-
-
 
 #Preview {
     ContentView()
