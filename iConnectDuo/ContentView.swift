@@ -299,11 +299,12 @@ struct QuizView: View {
         isSaving = true
         
         Task {
-            await saveAnswersToAppwrite(selectedAnswers: selectedAnswers)
+            await saveAnswersToAppwrite(selectedAnswers: selectedAnswers, questions: quizQuestions)
             isSaving = false
             showFinishedView = true
         }
     }
+    
 }
 
 // MARK: - Finished View

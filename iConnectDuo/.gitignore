@@ -2,3 +2,7 @@
 .appwrite
 .DS_store
 Config.xcconfig
+# Ignore local build configs
+Config.xcconfig
+*.xcconfig
+

@@ -140,23 +140,18 @@ func grabApiKey() -> String {
 }
 
 // MARK: - Save quiz answers to Appwrite
-func saveAnswersToAppwrite(selectedAnswers: [UUID: String]) async {
+func saveAnswersToAppwrite(selectedAnswers: [UUID: String], questions: [QuizView.Question]) async {
     let databaseId = getConfigValue(for: "appwriteDatabaseID")
     let collectionId = getConfigValue(for: "appwriteCollectionID")
     
-    // User ID
     let userID = await UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
     
-    // Map answers for all questions
-    let allQuestions = await QuizView().allQuestions
     var answersArray: [String] = []
-    
-    // First element is userID
     answersArray.append(userID)
     
-    for (index, question) in allQuestions.enumerated() {
+    for (index, question) in questions.enumerated() {
         let answer = selectedAnswers[question.id] ?? "NA"
-        answersArray.append("q\(index+1): \(answer)")
+        answersArray.append("q\(index + 1): \(answer)")
     }
     
     let documentData: [String: Any] = [
@@ -178,4 +173,3 @@ func saveAnswersToAppwrite(selectedAnswers: [UUID: String]) async {
         print("Error saving document:", error)
     }
 }
-
