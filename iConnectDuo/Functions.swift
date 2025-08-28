@@ -338,26 +338,74 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
 }
 
 
+// MARK: - Location Manager
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
-    @Published var region = MKCoordinateRegion(
+    private let manager = CLLocationManager()
+    
+    @Published var userLocation: CLLocation?
+    @Published var userRegion: MKCoordinateRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
+    @Published var hasPermission = false
     
-    private let manager = CLLocationManager()
+    // <<< Add this property
+    private var permissionCompletion: ((Bool) -> Void)?
     
     override init() {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.requestWhenInUseAuthorization()
-        manager.startUpdatingLocation()
+        checkPermission()
+    }
+    
+    func checkPermission() {
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            hasPermission = true
+            manager.startUpdatingLocation()
+        case .denied, .restricted:
+            hasPermission = false
+        case .notDetermined:
+            hasPermission = false
+        @unknown default:
+            hasPermission = false
+        }
+    }
+    
+    // Updated request function
+    func requestLocationPermission(completion: ((Bool) -> Void)? = nil) {
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            hasPermission = true
+            manager.startUpdatingLocation()
+            completion?(true)
+        case .notDetermined:
+            permissionCompletion = completion
+            manager.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            hasPermission = false
+            completion?(false)
+        @unknown default:
+            hasPermission = false
+            completion?(false)
+        }
+    }
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.checkPermission()
+            self.permissionCompletion?(self.hasPermission)
+            self.permissionCompletion = nil
+        }
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.first else { return }
-        DispatchQueue.main.async {
-            self.region.center = location.coordinate
+        guard let location = locations.last else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.userLocation = location
+            self?.userRegion.center = location.coordinate
         }
     }
     

@@ -395,12 +395,46 @@ struct FinishedView: View {
 
 struct DashBoardView: View {
     @StateObject private var locationManager = LocationManager()
-    
+    @State private var showDeniedAlert = false
     var body: some View {
-        Map(coordinateRegion: $locationManager.region, showsUserLocation: true)
-            .edgesIgnoringSafeArea(.all)
+            Group {
+                if locationManager.hasPermission {
+                    // Apple Maps view
+                    Map(coordinateRegion: $locationManager.userRegion, showsUserLocation: true)
+                        .edgesIgnoringSafeArea(.all)
+                } else {
+                    // Permission request view
+                    VStack(spacing: 20) {
+                        Text("Location access is required to show your position on the map.")
+                            .multilineTextAlignment(.center)
+                            .padding()
+                        
+                        Button("Grant Permission") {
+                            locationManager.requestLocationPermission { granted in
+                                if !granted {
+                                    showDeniedAlert = true
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                        .alert("Location Permission Denied", isPresented: $showDeniedAlert) {
+                            Button("OK", role: .cancel) {}
+                        } message: {
+                            Text("Please enable location access in Settings to use the map.")
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .onAppear {
+                locationManager.checkPermission()
+            }
+        }
     }
-}
+
 
 #Preview {
     ContentView()
