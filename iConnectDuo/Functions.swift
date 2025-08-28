@@ -11,6 +11,9 @@ import UserNotifications
 import Appwrite
 import UIKit
 import MultipeerConnectivity
+import Foundation
+import MapKit
+import CoreLocation
 
 // MARK: - Globals
 var niSession: NISession?
@@ -36,6 +39,7 @@ func checkCameraPermission() {
 
 // MARK: - Nearby Interaction
 func setupNearbyInteraction() {
+    // i tried finding a fix, but NO, NOTHING!
     guard NISession.isSupported else {
         print("Nearby Interaction is NOT supported")
         return
@@ -78,10 +82,6 @@ class NIHandler: NSObject, NISessionDelegate {
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
         print("Nearby objects updated:", nearbyObjects)
     }
-}
-
-func getOtherDeviceToken() {
-    // add functions here
 }
 
 // MARK: - Notifications
@@ -204,3 +204,164 @@ func fetchAnswersFromAppwrite() async {
 
 }
 
+
+
+struct GeminiRequest: Codable {
+    let prompt: String
+    let maxTokens: Int
+}
+
+struct GeminiResponse: Codable {
+    let text: String
+}
+
+func callGemini(prompt: String, completion: @escaping (String?) -> Void) {
+    guard let url = URL(string: "https://gemini.googleapis.com/v1/your-endpoint") else {
+        completion(nil)
+        return
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.addValue("Bearer YOUR_API_KEY_HERE", forHTTPHeaderField: "Authorization")
+
+    let body = GeminiRequest(prompt: prompt, maxTokens: 150)
+    request.httpBody = try? JSONEncoder().encode(body)
+
+    URLSession.shared.dataTask(with: request) { data, response, error in
+        if let error = error {
+            print("Error:", error)
+            completion(nil)
+            return
+        }
+
+        guard let data = data else {
+            completion(nil)
+            return
+        }
+
+        do {
+            let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
+            completion(decoded.text)
+        } catch {
+            print("Decoding error:", error)
+            completion(nil)
+        }
+    }.resume()
+}
+
+class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate {
+    static let shared = MPCHandler()
+    
+    private let serviceType = "iconnect-ni"
+    private let peerID = MCPeerID(displayName: UIDevice.current.name)
+    private var session: MCSession!
+    private var advertiser: MCNearbyServiceAdvertiser!
+    private var browser: MCNearbyServiceBrowser!
+    
+    override init() {
+        super.init()
+        session = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .required)
+        session.delegate = self
+        
+        advertiser = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: nil, serviceType: serviceType)
+        advertiser.delegate = self
+        
+        browser = MCNearbyServiceBrowser(peer: peerID, serviceType: serviceType)
+        browser.delegate = self
+    }
+    
+    func start() {
+        advertiser.startAdvertisingPeer()
+        browser.startBrowsingForPeers()
+        print("MPC started: advertising + browsing")
+    }
+    
+    func stop() {
+        advertiser.stopAdvertisingPeer()
+        browser.stopBrowsingForPeers()
+        print("MPC stopped")
+    }
+    
+    // MARK: - Send Token
+    func sendDiscoveryToken(_ token: NIDiscoveryToken) {
+        guard let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true) else { return }
+        if !session.connectedPeers.isEmpty {
+            do {
+                try session.send(data, toPeers: session.connectedPeers, with: .reliable)
+                print("Sent NI token to peers")
+            } catch {
+                print("Error sending NI token:", error)
+            }
+        }
+    }
+    
+    // MARK: - Advertiser Delegate
+    func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID,
+                    withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
+        print("Received invitation from \(peerID.displayName)")
+        invitationHandler(true, session)
+    }
+    
+    // MARK: - Browser Delegate
+    func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID,
+                 withDiscoveryInfo info: [String : String]?) {
+        print("Found peer \(peerID.displayName), inviting...")
+        browser.invitePeer(peerID, to: session, withContext: nil, timeout: 10)
+    }
+    
+    func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
+        print("Lost peer \(peerID.displayName)")
+    }
+    
+    // MARK: - Session Delegate
+    func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
+        print("Peer \(peerID.displayName) changed state: \(state.rawValue)")
+    }
+    
+    func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+        do {
+            if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
+                print("Received NI token from \(peerID.displayName)")
+                niSession?.run(NINearbyPeerConfiguration(peerToken: token))
+            }
+        } catch {
+            print("Error decoding NI token:", error)
+        }
+    }
+    
+    // Unused delegate stubs
+    func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {}
+    func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {}
+    func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) {}
+}
+
+
+class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198),
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )
+    
+    private let manager = CLLocationManager()
+    
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.requestWhenInUseAuthorization()
+        manager.startUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.first else { return }
+        DispatchQueue.main.async {
+            self.region.center = location.coordinate
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Failed to get user location:", error)
+    }
+}

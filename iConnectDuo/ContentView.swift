@@ -2,95 +2,102 @@ import SwiftUI
 import AVFoundation
 import NearbyInteraction
 import SwiftDotenv
+import SwiftUI
+import MapKit
+
+
 struct ContentView: View {
     @State private var username: String = ""
     @State private var selectedQ1: Int? = nil
     @State private var selectedQ2: Int? = nil
     @State private var showQuizRules = false
     @State private var deviceID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+    @AppStorage("quizCompleted") private var quizCompleted = false  // <-- persist state
     
     var body: some View {
-        
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Hi! Welcome to")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .offset(x: -60, y: 10)
-                    
-                    Image("logo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 300, height: 250)
+            if quizCompleted {
+                // Skip intro if already finished
+                DashBoardView()
+            } else {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        Text("Hi! Welcome to")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .offset(x: -60, y: 10)
+                        
+                        Image("logo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 300, height: 250)
+                            .offset(y: -30)
+                        
+                        (
+                            Text("Your details are ") .fontWeight(.bold) +
+                            Text("needed").foregroundColor(.blue).fontWeight(.bold) +
+                            Text(" to make this experience ") .fontWeight(.bold) +
+                            Text("better").foregroundColor(.blue).fontWeight(.bold)
+                        )
+                        .offset(y: -50)
+                        .padding(.horizontal)
+                        
+                        TextField("Enter your real name", text: $username)
+                            .padding()
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.3)))
+                            .foregroundColor(.black)
+                            .frame(width: 350, height: 50)
+                            .offset(y: -60)
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Your ") .fontWeight(.bold) +
+                            Text("gender").foregroundColor(.blue).fontWeight(.bold) +
+                            Text("? ") .fontWeight(.bold)
+                            
+                            HStack(spacing: 20) {
+                                SelectableButton(title: "Male", isSelected: selectedQ1 == 0) { selectedQ1 = 0 }
+                                SelectableButton(title: "Female", isSelected: selectedQ1 == 1) { selectedQ1 = 1 }
+                            }
+                        }
+                        .offset(y: -40)
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Gender you are") .fontWeight(.bold) +
+                            Text(" interested").foregroundColor(.blue).fontWeight(.bold) +
+                            Text(" in? ") .fontWeight(.bold)
+                            
+                            HStack(spacing: 20) {
+                                SelectableButton(title: "Male", isSelected: selectedQ2 == 0) { selectedQ2 = 0 }
+                                SelectableButton(title: "Female", isSelected: selectedQ2 == 1) { selectedQ2 = 1 }
+                            }
+                        }
                         .offset(y: -30)
-                    
-                    (
-                        Text("Your details are ") .fontWeight(.bold) +
-                        Text("needed").foregroundColor(.blue).fontWeight(.bold) +
-                        Text(" to make this experience ") .fontWeight(.bold) +
-                        Text("better").foregroundColor(.blue).fontWeight(.bold)
-                    )
-                    .offset(y: -50)
-                    .padding(.horizontal)
-                    
-                    TextField("Enter your real name", text: $username)
+                        
+                        Button(action: { showQuizRules = true }) {
+                            HStack {
+                                Spacer()
+                                Text("Go!")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .padding(.trailing, 16)
+                            }
+                            .frame(width: 200, height: 60)
+                            .background(Color.gray)
+                            .cornerRadius(12)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.trailing, 30)
+                        .navigationDestination(isPresented: $showQuizRules) {
+                            QuizRulesPart()
+                        }
                         .padding()
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.3)))
-                        .foregroundColor(.black)
-                        .frame(width: 350, height: 50)
-                        .offset(y: -60)
-                    
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Your ") .fontWeight(.bold) +
-                        Text("gender").foregroundColor(.blue).fontWeight(.bold) +
-                        Text("? ") .fontWeight(.bold)
-                        
-                        HStack(spacing: 20) {
-                            SelectableButton(title: "Male", isSelected: selectedQ1 == 0) { selectedQ1 = 0 }
-                            SelectableButton(title: "Female", isSelected: selectedQ1 == 1) { selectedQ1 = 1 }
+                        .onAppear {
+                            requestNotificationPermission()
+                            testNotification()
+                            setupNearbyInteraction()
+                            let key = grabApiKey()
+                            print("API key grabbed: \(key)")
                         }
-                    }
-                    .offset(y: -40)
-                    
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Gender you are") .fontWeight(.bold) +
-                        Text(" interested").foregroundColor(.blue).fontWeight(.bold) +
-                        Text(" in? ") .fontWeight(.bold)
-                        
-                        HStack(spacing: 20) {
-                            SelectableButton(title: "Male", isSelected: selectedQ2 == 0) { selectedQ2 = 0 }
-                            SelectableButton(title: "Female", isSelected: selectedQ2 == 1) { selectedQ2 = 1 }
-                        }
-                    }
-                    .offset(y: -30)
-                    
-                    Button(action: { showQuizRules = true }) {
-                        HStack {
-                            Spacer()
-                            Text("Go!")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .padding(.trailing, 16)
-                        }
-                        .frame(width: 200, height: 60)
-                        .background(Color.gray)
-                        .cornerRadius(12)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.trailing, 30)
-                    .navigationDestination(isPresented: $showQuizRules) {
-                        QuizRulesPart()
-                    }
-                    .padding()
-                    .onAppear {
-                        requestNotificationPermission()
-                        testNotification()
-                        setupNearbyInteraction()
-                        let key = grabApiKey()
-                        print("API key grabbed: \(key)")
-                        
-                        
                     }
                 }
             }
@@ -216,14 +223,13 @@ struct QuizView: View {
     @State private var quizQuestions: [Question] = []
     @State private var currentIndex: Int = 0
     @State private var selectedAnswers: [UUID: String] = [:]
-    @State private var quizCompleted = false
     @State private var isSaving = false
-    @State private var showFinishedView = false
+    @AppStorage("quizCompleted") private var quizCompleted = false  // <-- persist
     
     var body: some View {
         NavigationStack {
             VStack {
-                if showFinishedView {
+                if quizCompleted {
                     FinishedView()
                 } else if !quizQuestions.isEmpty {
                     let currentQuestion = quizQuestions[currentIndex]
@@ -290,11 +296,10 @@ struct QuizView: View {
     
     func finishQuiz() {
         isSaving = true
-        
         Task {
             await saveAnswersToAppwrite(selectedAnswers: selectedAnswers, questions: quizQuestions)
             isSaving = false
-            showFinishedView = true
+            quizCompleted = true   // <-- mark as done forever
         }
     }
 }
@@ -305,82 +310,81 @@ struct FinishedView: View {
     @State private var showSecond = false
     @State private var showThird = false
     @State private var showFourth = false
+    
     var body: some View {
         NavigationStack {
-            VStack(spacing:30){
+            VStack(spacing: 30) {
+                
+                // First (Trailing aligned)
                 if showFirst {
                     (
-                        Text("Thank You! ") .foregroundColor(.blue).fontWeight(.bold) +
-                        Text("The Quiz is now completed") .fontWeight(.bold)
+                        Text("Thank You! ").foregroundColor(.blue).fontWeight(.bold) +
+                        Text("The Quiz is now completed").fontWeight(.bold)
                     )
+                    .font(.title2)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .font(.title2)
                     .opacity(showFirst ? 1 : 0)
                     .transition(.opacity)
-                    .frame(width: 300)
                     .navigationBarBackButtonHidden(true)
-                    
                 }
+                
+                // Second (Trailing aligned)
                 if showSecond {
                     (
-                        Text("How ") .foregroundColor(.blue).fontWeight(.bold) +
-                        Text("does this app work?") .fontWeight(.bold)
+                        Text("How ").foregroundColor(.blue).fontWeight(.bold) +
+                        Text("does this app work?").fontWeight(.bold)
                     )
+                    .font(.title2)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .font(.title2)
                     .opacity(showSecond ? 1 : 0)
                     .transition(.opacity)
-                    .frame(width: 300)
                 }
+                
+                // Third (Leading aligned)
                 if showThird {
                     (
-                        Text("Using your ") .fontWeight(.bold) + Text("GPS ") .foregroundColor(.blue).fontWeight(.bold) + Text(", iConnect Duo will ") .fontWeight(.bold) + Text("search ") .foregroundColor(.blue).fontWeight(.bold) + Text("for people which  ") .fontWeight(.bold) + Text("match ") .foregroundColor(.blue).fontWeight(.bold) + Text("with you.") .fontWeight(.bold)
-                        
+                        Text("Using your ").fontWeight(.bold) +
+                        Text("GPS ").foregroundColor(.blue).fontWeight(.bold) +
+                        Text(", iConnect Duo will ").fontWeight(.bold) +
+                        Text("search ").foregroundColor(.blue).fontWeight(.bold) +
+                        Text("for people which ").fontWeight(.bold) +
+                        Text("match ").foregroundColor(.blue).fontWeight(.bold) +
+                        Text("with you.").fontWeight(.bold)
                     )
+                    .font(.title2)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.title2)
-                    .opacity(showSecond ? 1 : 0)
+                    .opacity(showThird ? 1 : 0)
                     .transition(.opacity)
-                    .frame(width: 300)
                 }
+                
+                // Fourth (Trailing aligned)
                 if showFourth {
                     (
-                        Text("When another user who matches with you comes ") .fontWeight(.bold) +
-                        Text("near you") .foregroundColor(.blue).fontWeight(.bold) +
-                        Text(", your phone will start ") .fontWeight(.bold) +
-                        Text("ringing") .foregroundColor(.blue).fontWeight(.bold) +
-                        Text(", signals that your match is ") .fontWeight(.bold) +
-                        Text("near") .foregroundColor(.blue).fontWeight(.bold)
+                        Text("When another user who matches with you comes ").fontWeight(.bold) +
+                        Text("near you").foregroundColor(.blue).fontWeight(.bold) +
+                        Text(", your phone will start ").fontWeight(.bold) +
+                        Text("ringing").foregroundColor(.blue).fontWeight(.bold) +
+                        Text(", signals that your match is ").fontWeight(.bold) +
+                        Text("near").foregroundColor(.blue).fontWeight(.bold)
                     )
+                    .font(.title2)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .font(.title2)
-                    .opacity(showSecond ? 1 : 0)
+                    .opacity(showFourth ? 1 : 0)
                     .transition(.opacity)
-                    .frame(width: 300)
                 }
             }
             .onAppear {
-                
-                withAnimation(.easeIn(duration: 1)) {
-                    showFirst = true
-                }
-                
+                withAnimation(.easeIn(duration: 1)) { showFirst = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation(.easeIn(duration: 1)) {
-                        showSecond = true
-                    }
+                    withAnimation(.easeIn(duration: 1)) { showSecond = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        withAnimation(.easeIn(duration: 1)) {
-                            showThird = true
-                        }
+                        withAnimation(.easeIn(duration: 1)) { showThird = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            withAnimation(.easeIn(duration: 1)) {
-                                showFourth = true
-                            }
+                            withAnimation(.easeIn(duration: 1)) { showFourth = true }
                         }
                     }
                 }
@@ -388,7 +392,16 @@ struct FinishedView: View {
         }
     }
 }
+
+struct DashBoardView: View {
+    @StateObject private var locationManager = LocationManager()
+    
+    var body: some View {
+        Map(coordinateRegion: $locationManager.region, showsUserLocation: true)
+            .edgesIgnoringSafeArea(.all)
+    }
+}
+
 #Preview {
     ContentView()
 }
-
