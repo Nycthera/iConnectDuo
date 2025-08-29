@@ -15,6 +15,8 @@ import Foundation
 import MapKit
 import CoreLocation
 
+
+
 // MARK: - Globals
 var niSession: NISession?
 var niToken: NIDiscoveryToken?
