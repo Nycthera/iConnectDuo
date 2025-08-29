@@ -4,7 +4,11 @@ import NearbyInteraction
 import SwiftDotenv
 import SwiftUI
 import MapKit
+import Combine
 
+class TabSelection: ObservableObject {
+    @Published var selectedTab: Int = 0
+}
 
 struct ContentView: View {
     @State private var username: String = ""
@@ -13,6 +17,7 @@ struct ContentView: View {
     @State private var showQuizRules = false
     @State private var deviceID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
     @AppStorage("quizCompleted") private var quizCompleted = false  // <-- persist state
+    @StateObject private var locationManager = LocationManager()
     
     var body: some View {
         NavigationStack {
@@ -97,6 +102,11 @@ struct ContentView: View {
                             setupNearbyInteraction()
                             let key = grabApiKey()
                             print("API key grabbed: \(key)")
+                            
+                            // Call the function properly
+                            locationManager.requestLocationPermission { granted in
+                                print("Location permission granted: \(granted)")
+                            }
                         }
                     }
                 }
@@ -104,6 +114,7 @@ struct ContentView: View {
         }
     }
 }
+
 
 struct SelectableButton: View {
     let title: String
@@ -305,77 +316,22 @@ struct QuizView: View {
 }
 
 // MARK: - Finished View
+
 struct FinishedView: View {
     @State private var showFirst = false
     @State private var showSecond = false
     @State private var showThird = false
     @State private var showFourth = false
+    @State private var goToDashboard = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 30) {
                 
-                // First (Trailing aligned)
-                if showFirst {
-                    (
-                        Text("Thank You! ").foregroundColor(.blue).fontWeight(.bold) +
-                        Text("The Quiz is now completed").fontWeight(.bold)
-                    )
-                    .font(.title2)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .opacity(showFirst ? 1 : 0)
-                    .transition(.opacity)
-                    .navigationBarBackButtonHidden(true)
-                }
-                
-                // Second (Trailing aligned)
-                if showSecond {
-                    (
-                        Text("How ").foregroundColor(.blue).fontWeight(.bold) +
-                        Text("does this app work?").fontWeight(.bold)
-                    )
-                    .font(.title2)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .opacity(showSecond ? 1 : 0)
-                    .transition(.opacity)
-                }
-                
-                // Third (Leading aligned)
-                if showThird {
-                    (
-                        Text("Using your ").fontWeight(.bold) +
-                        Text("GPS ").foregroundColor(.blue).fontWeight(.bold) +
-                        Text(", iConnect Duo will ").fontWeight(.bold) +
-                        Text("search ").foregroundColor(.blue).fontWeight(.bold) +
-                        Text("for people which ").fontWeight(.bold) +
-                        Text("match ").foregroundColor(.blue).fontWeight(.bold) +
-                        Text("with you.").fontWeight(.bold)
-                    )
-                    .font(.title2)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .opacity(showThird ? 1 : 0)
-                    .transition(.opacity)
-                }
-                
-                // Fourth (Trailing aligned)
-                if showFourth {
-                    (
-                        Text("When another user who matches with you comes ").fontWeight(.bold) +
-                        Text("near you").foregroundColor(.blue).fontWeight(.bold) +
-                        Text(", your phone will start ").fontWeight(.bold) +
-                        Text("ringing").foregroundColor(.blue).fontWeight(.bold) +
-                        Text(", signals that your match is ").fontWeight(.bold) +
-                        Text("near").foregroundColor(.blue).fontWeight(.bold)
-                    )
-                    .font(.title2)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .opacity(showFourth ? 1 : 0)
-                    .transition(.opacity)
-                }
+                if showFirst { firstBlock }
+                if showSecond { secondBlock }
+                if showThird { thirdBlock }
+                if showFourth { fourthBlock }
             }
             .onAppear {
                 withAnimation(.easeIn(duration: 1)) { showFirst = true }
@@ -385,25 +341,104 @@ struct FinishedView: View {
                         withAnimation(.easeIn(duration: 1)) { showThird = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             withAnimation(.easeIn(duration: 1)) { showFourth = true }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                goToDashboard = true
+                            }
                         }
                     }
                 }
             }
+            .navigationDestination(isPresented: $goToDashboard) {
+                DashBoardView()
+            }
         }
+    }
+}
+
+// MARK: - Blocks
+
+private extension FinishedView {
+    
+    var firstBlock: some View {
+        (
+            Text("Thank You! ").foregroundColor(.blue).bold() +
+            Text("The Quiz is now completed").bold()
+        )
+        .font(.title2)
+        .multilineTextAlignment(.trailing)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(10)
+        .transition(.opacity)
+    }
+    
+    var secondBlock: some View {
+        (
+            Text("How ").foregroundColor(.blue).bold() +
+            Text("does this app work?").bold()
+        )
+        .font(.title2)
+        .multilineTextAlignment(.trailing)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(10)
+        .transition(.opacity)
+    }
+    
+    var thirdBlock: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            (
+                Text("Using your ").bold() +
+                Text("GPS ").foregroundColor(.blue).bold() +
+                Text(", iConnect Duo will ").bold()
+            )
+            (
+                Text("search ").foregroundColor(.blue).bold() +
+                Text("for people which ").bold() +
+                Text("match ").foregroundColor(.blue).bold() +
+                Text("with you.").bold()
+            )
+        }
+        .font(.title2)
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .transition(.opacity)
+    }
+    
+    var fourthBlock: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            (
+                Text("When another user who matches with you comes ").bold() +
+                Text("near you").foregroundColor(.blue).bold() +
+                Text(", your phone will start ").bold()
+            )
+            (
+                Text("ringing").foregroundColor(.blue).bold() +
+                Text(", signals that your match is ").bold() +
+                Text("near").foregroundColor(.blue).bold()
+            )
+        }
+        .font(.title2)
+        .multilineTextAlignment(.trailing)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(10)
+        .transition(.opacity)
     }
 }
 
 struct DashBoardView: View {
     @StateObject private var locationManager = LocationManager()
     @State private var showDeniedAlert = false
+    @EnvironmentObject var tabSelection: TabSelection
+
     var body: some View {
+        TabView(selection: $tabSelection.selectedTab) {
+            
+            // Map tab
             Group {
                 if locationManager.hasPermission {
-                    // Apple Maps view
                     Map(coordinateRegion: $locationManager.userRegion, showsUserLocation: true)
                         .edgesIgnoringSafeArea(.all)
                 } else {
-                    // Permission request view
                     VStack(spacing: 20) {
                         Text("Location access is required to show your position on the map.")
                             .multilineTextAlignment(.center)
@@ -426,14 +461,59 @@ struct DashBoardView: View {
                             Text("Please enable location access in Settings to use the map.")
                         }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .onAppear {
-                locationManager.checkPermission()
+            .tabItem {
+                Label("Map", systemImage: "map.fill")
             }
+            .tag(0)
+
+            // Profile tab
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.fill")
+                }
+                .tag(1)
+
+            // Example Settings tab
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
+                .tag(2)
+        }
+        .onAppear {
+            locationManager.checkPermission()
         }
     }
+}
+
+// Make sure ProfileView conforms to View
+struct ProfileView: View {
+    @EnvironmentObject var tabSelection: TabSelection
+
+    var body: some View {
+        VStack {
+            Text("Hello, Profile!")
+                .font(.title)
+            Button("Go to Map Tab") {
+                tabSelection.selectedTab = 0
+            }
+            .padding()
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+        }
+    }
+}
+
+// Optional Settings tab
+struct SettingsView: View {
+    var body: some View {
+        Text("Settings go here")
+            .font(.title)
+    }
+}
 
 
 #Preview {

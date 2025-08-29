@@ -18,6 +18,7 @@ import CoreLocation
 // MARK: - Globals
 var niSession: NISession?
 var niToken: NIDiscoveryToken?
+var devMode: Bool = true   // <-- proper declaration
 
 // MARK: - Camera Permission
 func checkCameraPermission() {
@@ -159,22 +160,24 @@ func saveAnswersToAppwrite(selectedAnswers: [UUID: String], questions: [QuizView
         "userID": userID,
         "userAnswers": answersArray
     ]
-
     let databases = Databases(AppwriteService.shared.client)
     
-    do {
-        let document = try await databases.createDocument(
-            databaseId: databaseId,
-            collectionId: collectionId,
-            documentId: "unique()",
-            data: documentData
-        )
-        print("Document saved successfully:", document)
-    } catch {
-        print("Error saving document:", error)
+    if devMode {
+        print("func not run, disable dev mode")
+    } else {
+        do {
+            let document = try await databases.createDocument(
+                databaseId: databaseId,
+                collectionId: collectionId,
+                documentId: "unique()",
+                data: documentData
+            )
+            print("Document saved successfully:", document)
+        } catch {
+            print("Error saving document:", error)
+        }
     }
 }
-
 func fetchAnswersFromAppwrite() async {
     let databaseId = getConfigValue(for: "appwriteDatabaseID")
     let collectionId = getConfigValue(for: "appwriteCollectionID")
