@@ -298,6 +298,7 @@ struct QuizView: View {
                     .padding()
                 }
             }
+            .navigationBarBackButtonHidden(true)
             .onAppear {
                 quizQuestions = Array(allQuestions.shuffled().prefix(7))
             }
@@ -432,72 +433,74 @@ struct DashBoardView: View {
     var values = 1...10000
     
     var body: some View {
-        TabView(selection: $tabSelection.selectedTab) {
-            
-            // Map tab
-            Group {
-                if locationManager.hasPermission {
-                    Map(coordinateRegion: $locationManager.userRegion, showsUserLocation: true)
-                        .edgesIgnoringSafeArea(.all)
-                } else {
-                    VStack(spacing: 20) {
-                        Text("Location access is required to show your position on the map.")
-                            .multilineTextAlignment(.center)
-                            .padding()
-                        
-                        Button("Grant Permission") {
-                            locationManager.requestLocationPermission { granted in
-                                if !granted {
-                                    showDeniedAlert = true
+            TabView(selection: $tabSelection.selectedTab) {
+                
+                // Map tab
+                Group {
+                    if locationManager.hasPermission {
+                        Map(coordinateRegion: $locationManager.userRegion, showsUserLocation: true)
+                            .edgesIgnoringSafeArea(.all)
+                    } else {
+                        VStack(spacing: 20) {
+                            Text("Location access is required to show your position on the map.")
+                                .multilineTextAlignment(.center)
+                                .padding()
+                            
+                            Button("Grant Permission") {
+                                locationManager.requestLocationPermission { granted in
+                                    if !granted {
+                                        showDeniedAlert = true
+                                    }
                                 }
                             }
-                        }
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .alert("Location Permission Denied", isPresented: $showDeniedAlert) {
-                            Button("OK", role: .cancel) {}
-                        } message: {
-                            Text("Please enable location access in Settings to use the map.")
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                            .navigationBarBackButtonHidden(true)
+                            .alert("Location Permission Denied", isPresented: $showDeniedAlert) {
+                                Button("OK", role: .cancel) {}
+                            } message: {
+                                Text("Please enable location access in Settings to use the map.")
+                            }
                         }
                     }
                 }
-            }
-            .tabItem {
-                Label("Map", systemImage: "map.fill")
-            }
-            .tag(0)
-            
-            // Profile tab
-            ProfileView()
                 .tabItem {
-                    Label("Profile", systemImage: "person.fill")
+                    Label("Map", systemImage: "map.fill")
                 }
-                .tag(1)
-            
-            // Example Settings tab
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
-                }
-                .tag(2)
-        }
-        .onAppear {
-            locationManager.checkPermission()
-            setupNearbyInteraction()
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { // 1s buffer
-                if !MPCHandler.shared.isStarted {
-                    MPCHandler.shared.start()
-                    if let token = niToken {
-                        MPCHandler.shared.sendDiscoveryToken(token)
+                .tag(0)
+                
+                // Profile tab
+                ProfileView()
+                    .tabItem {
+                        Label("Profile", systemImage: "person.fill")
+                    }
+                    .tag(1)
+                
+                // Example Settings tab
+                SettingsView()
+                    .tabItem {
+                        Label("Settings", systemImage: "gearshape.fill")
+                    }
+                    .tag(2)
+            }
+            .onAppear {
+                locationManager.checkPermission()
+                setupNearbyInteraction()
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { // 1s buffer
+                    if !MPCHandler.shared.isStarted {
+                        MPCHandler.shared.start()
+                        if let token = niToken {
+                            MPCHandler.shared.sendDiscoveryToken(token)
+                        }
                     }
                 }
             }
         }
     }
-}
+
 
 // Make sure ProfileView conforms to View
 struct ProfileView: View {
