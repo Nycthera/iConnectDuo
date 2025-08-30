@@ -11,9 +11,9 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>We need local network usage for Multipeer Connectivity</string>
 	<key>appwriteCollectionID</key>
-	<string>68a59456002a3091735d</string>
+	<string>{appwriteDatabaseID}</string>
 	<key>appwriteDatabaseID</key>
-	<string>68a5944f0006ab9ec718</string>
+	<string>{appwriteCollectionID}</string>
 	<key>NSCameraUsageDescription</key>
 	<string>We need camera access to take photos.</string>
 	<key>NSMicrophoneUsageDescription</key>

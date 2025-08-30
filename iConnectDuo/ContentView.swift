@@ -100,10 +100,10 @@ struct ContentView: View {
                             requestNotificationPermission()
                             testNotification()
                             setupNearbyInteraction()
+                            MPCHandler.shared.start()   // <-- start advertising + browsing
                             let key = grabApiKey()
                             print("API key grabbed: \(key)")
                             
-                            // Call the function properly
                             locationManager.requestLocationPermission { granted in
                                 print("Location permission granted: \(granted)")
                             }
@@ -429,7 +429,7 @@ struct DashBoardView: View {
     @StateObject private var locationManager = LocationManager()
     @State private var showDeniedAlert = false
     @EnvironmentObject var tabSelection: TabSelection
-
+    
     var body: some View {
         TabView(selection: $tabSelection.selectedTab) {
             
@@ -467,14 +467,14 @@ struct DashBoardView: View {
                 Label("Map", systemImage: "map.fill")
             }
             .tag(0)
-
+            
             // Profile tab
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
                 .tag(1)
-
+            
             // Example Settings tab
             SettingsView()
                 .tabItem {
@@ -491,7 +491,7 @@ struct DashBoardView: View {
 // Make sure ProfileView conforms to View
 struct ProfileView: View {
     @EnvironmentObject var tabSelection: TabSelection
-
+    
     var body: some View {
         VStack {
             Text("Hello, Profile!")
