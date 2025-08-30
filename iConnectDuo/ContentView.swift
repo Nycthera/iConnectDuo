@@ -100,7 +100,6 @@ struct ContentView: View {
                             requestNotificationPermission()
                             testNotification()
                             setupNearbyInteraction()
-                            MPCHandler.shared.start()   // <-- start advertising + browsing
                             let key = grabApiKey()
                             print("API key grabbed: \(key)")
                             
@@ -429,6 +428,8 @@ struct DashBoardView: View {
     @StateObject private var locationManager = LocationManager()
     @State private var showDeniedAlert = false
     @EnvironmentObject var tabSelection: TabSelection
+    @StateObject private var mpc = MPCHandler.shared
+    var values = 1...10000
     
     var body: some View {
         TabView(selection: $tabSelection.selectedTab) {
@@ -484,6 +485,16 @@ struct DashBoardView: View {
         }
         .onAppear {
             locationManager.checkPermission()
+            setupNearbyInteraction()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { // 1s buffer
+                if !MPCHandler.shared.isStarted {
+                    MPCHandler.shared.start()
+                    if let token = niToken {
+                        MPCHandler.shared.sendDiscoveryToken(token)
+                    }
+                }
+            }
         }
     }
 }

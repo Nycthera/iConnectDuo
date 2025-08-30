@@ -75,13 +75,25 @@ func saveNITokenToUserDefaults(_ token: NIDiscoveryToken) {
 // MARK: - NI Session Delegate
 class NIHandler: NSObject, NISessionDelegate {
     static let shared = NIHandler()
-    
-    func session(_ session: NISession, didInvalidateWith error: Error) {
-        print("NI session invalidated:", error)
-    }
-    
+    var isPaired = false
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        print("Nearby objects updated:", nearbyObjects)
+        if let first = nearbyObjects.first, first.distance != nil {
+            if !isPaired {
+                isPaired = true
+                print("✅ Paired with peer!")
+                sendPairingNotification(success: true)   // trigger success instantly
+            }
+        }
+    }
+
+    func session(_ session: NISession, didRemove nearbyObjects: [NINearbyObject], reason: NINearbyObject.RemovalReason) {
+        if reason == .timeout || reason == .peerEnded {
+            if isPaired {
+                isPaired = false
+                print("❌ Lost connection with peer.")
+                sendPairingNotification(success: false)  // trigger failure instantly
+            }
+        }
     }
 }
 
@@ -254,21 +266,24 @@ func callGemini(prompt: String, completion: @escaping (String?) -> Void) {
     }.resume()
 }
 
-class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate {
+class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate, ObservableObject {
     static let shared = MPCHandler()
     
     private let serviceType = "iconnect-ni"
-    private let peerID = MCPeerID(displayName: UIDevice.current.name)
+    private let peerID: MCPeerID
     private var session: MCSession!
     private var advertiser: MCNearbyServiceAdvertiser!
     private var browser: MCNearbyServiceBrowser!
+    var isStarted = false
     
     override init() {
+        peerID = MCPeerID(displayName: UIDevice.current.name + "-" + UUID().uuidString.prefix(4))
         super.init()
+        
         session = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
         
-        advertiser = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: nil, serviceType: serviceType)
+        advertiser = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: ["role": "sender"], serviceType: serviceType)
         advertiser.delegate = self
         
         browser = MCNearbyServiceBrowser(peer: peerID, serviceType: serviceType)
@@ -276,61 +291,91 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
     }
     
     func start() {
+        guard !isStarted else { return }   // already started
+        stop() // optional: ensure clean slate
+        isStarted = true
+
         advertiser.startAdvertisingPeer()
-        browser.startBrowsingForPeers()
-        print("MPC started: advertising + browsing")
+        print("✅ Started advertising")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.browser.startBrowsingForPeers()
+            print("🔍 Started browsing for peers")
+        }
     }
+
     
     func stop() {
         advertiser.stopAdvertisingPeer()
         browser.stopBrowsingForPeers()
-        print("MPC stopped")
+        isStarted = false
+        print("🛑 Stopped MPC")
     }
     
-    // MARK: - Send Token
     func sendDiscoveryToken(_ token: NIDiscoveryToken) {
-        guard let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true) else { return }
-        if !session.connectedPeers.isEmpty {
-            do {
-                try session.send(data, toPeers: session.connectedPeers, with: .reliable)
-                print("Sent NI token to peers")
-            } catch {
-                print("Error sending NI token:", error)
+        guard !session.connectedPeers.isEmpty else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self.sendDiscoveryToken(token)
+                print("⌛ Waiting for peers before sending token...")
             }
+            return
+        }
+        
+        do {
+            let data = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
+            try session.send(data, toPeers: session.connectedPeers, with: .reliable)
+            print("📤 Sent NI token to peers")
+        } catch {
+            print("❌ Error sending NI token:", error)
         }
     }
     
     // MARK: - Advertiser Delegate
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID,
                     withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
-        print("Received invitation from \(peerID.displayName)")
+        print("📩 Received invitation from \(peerID.displayName)")
         invitationHandler(true, session)
     }
     
+    func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
+        print("❌ Advertiser failed: \(error.localizedDescription) \(error)")
+    }
+
+    
+    
     // MARK: - Browser Delegate
-    func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID,
-                 withDiscoveryInfo info: [String : String]?) {
-        print("Found peer \(peerID.displayName), inviting...")
+    func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
+        print("🔎 Found peer \(peerID.displayName), info: \(info ?? [:]) – inviting...")
         browser.invitePeer(peerID, to: session, withContext: nil, timeout: 10)
     }
     
     func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
-        print("Lost peer \(peerID.displayName)")
+        print("⚠️ Lost peer \(peerID.displayName)")
     }
+    
+    func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
+        print("❌ Browser failed: \(error.localizedDescription) \(error)")
+    }
+
     
     // MARK: - Session Delegate
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
-        print("Peer \(peerID.displayName) changed state: \(state.rawValue)")
+        switch state {
+        case .connected: print("✅ Connected to \(peerID.displayName)")
+        case .connecting: print("⌛ Connecting to \(peerID.displayName)...")
+        case .notConnected: print("❌ Not connected to \(peerID.displayName)")
+        @unknown default: print("❓ Unknown state for \(peerID.displayName)")
+        }
     }
     
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         do {
             if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
-                print("Received NI token from \(peerID.displayName)")
+                print("📥 Received NI token from \(peerID.displayName)")
                 niSession?.run(NINearbyPeerConfiguration(peerToken: token))
             }
         } catch {
-            print("Error decoding NI token:", error)
+            print("❌ Error decoding NI token:", error)
         }
     }
     
@@ -414,5 +459,23 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Failed to get user location:", error)
+    }
+}
+
+
+// Function to trigger a notification
+func sendPairingNotification(success: Bool) {
+    let content = UNMutableNotificationContent()
+    content.title = success ? "Pairing Successful 🎉" : "Pairing Failed ❌"
+    content.body = success ? "You’re now connected with the other user." : "Could not establish a connection. Try again."
+    content.sound = .default
+
+    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+
+    UNUserNotificationCenter.current().add(request) { error in
+        if let error = error {
+            print("Notification scheduling error: \(error)")
+        }
     }
 }

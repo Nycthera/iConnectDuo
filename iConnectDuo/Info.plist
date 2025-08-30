@@ -27,8 +27,7 @@
 	</array>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_iConnectDuoApp._tcp</string>
-		<string>_iConnectDuoApp._udp</string>
+		<string>_iconnect-ni._tcp</string>
 	</array>
 </dict>
 </plist>
