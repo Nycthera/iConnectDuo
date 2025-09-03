@@ -15,6 +15,7 @@ import Foundation
 import MapKit
 import CoreLocation
 
+
 // MARK: - Globals
 var niSession: NISession?
 var niToken: NIDiscoveryToken?
@@ -40,7 +41,6 @@ func checkCameraPermission() {
 
 // MARK: - Nearby Interaction
 func setupNearbyInteraction() {
-    // i tried finding a fix, but NO, NOTHING!
     guard NISession.isSupported else {
         print("Nearby Interaction is NOT supported")
         return
@@ -48,14 +48,20 @@ func setupNearbyInteraction() {
     
     print("Nearby Interaction is supported")
     
-    let session = NISession()
-    session.delegate = NIHandler.shared
-    niSession = session
+    if niSession == nil {
+        niSession = NISession()
+        niSession?.delegate = NIHandler.shared
+    }
     
-    if let token = session.discoveryToken {
+    // Always try to run the session if we have a token
+    if let token = niToken {
+        niSession?.run(NINearbyPeerConfiguration(peerToken: token))
+        print("NI session running with existing token")
+    } else if let token = niSession?.discoveryToken {
         niToken = token
-        print("NI Discovery Token: \(token)")
         saveNITokenToUserDefaults(token)
+        niSession?.run(NINearbyPeerConfiguration(peerToken: token))
+        print("NI session running with new token: \(token)")
     } else {
         print("Failed to get NI discovery token")
     }
@@ -80,8 +86,33 @@ class NIHandler: NSObject, NISessionDelegate {
         if let first = nearbyObjects.first, first.distance != nil {
             if !isPaired {
                 isPaired = true
-                print("✅ Paired with peer!")
+                print("Paired with peer!")
                 sendPairingNotification(success: true)   // trigger success instantly
+            }
+        }
+    }
+    
+    // MARK: - NI Session Resilience
+    func session(_ session: NISession, didInvalidateWith error: Error) {
+        print("NI Session invalidated: \(error.localizedDescription)")
+
+        // Auto-restart after short delay
+        if let token = niToken {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                session.run(NINearbyPeerConfiguration(peerToken: token))
+                print("NI session restarted after invalidation")
+            }
+        }
+    }
+
+    func sessionWasSuspended(_ session: NISession) {
+        print("NI Session was suspended")
+
+        // Auto-resume after suspension
+        if let token = niToken {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                session.run(NINearbyPeerConfiguration(peerToken: token))
+                print("NI session resumed after suspension")
             }
         }
     }
@@ -90,7 +121,7 @@ class NIHandler: NSObject, NISessionDelegate {
         if reason == .timeout || reason == .peerEnded {
             if isPaired {
                 isPaired = false
-                print("❌ Lost connection with peer.")
+                print("Lost connection with peer.")
                 sendPairingNotification(success: false)  // trigger failure instantly
             }
         }
@@ -221,50 +252,7 @@ func fetchAnswersFromAppwrite() async {
 
 
 
-struct GeminiRequest: Codable {
-    let prompt: String
-    let maxTokens: Int
-}
 
-struct GeminiResponse: Codable {
-    let text: String
-}
-
-func callGemini(prompt: String, completion: @escaping (String?) -> Void) {
-    guard let url = URL(string: "https://gemini.googleapis.com/v1/your-endpoint") else {
-        completion(nil)
-        return
-    }
-
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.addValue("Bearer YOUR_API_KEY_HERE", forHTTPHeaderField: "Authorization")
-
-    let body = GeminiRequest(prompt: prompt, maxTokens: 150)
-    request.httpBody = try? JSONEncoder().encode(body)
-
-    URLSession.shared.dataTask(with: request) { data, response, error in
-        if let error = error {
-            print("Error:", error)
-            completion(nil)
-            return
-        }
-
-        guard let data = data else {
-            completion(nil)
-            return
-        }
-
-        do {
-            let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
-            completion(decoded.text)
-        } catch {
-            print("Decoding error:", error)
-            completion(nil)
-        }
-    }.resume()
-}
 
 class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate, ObservableObject {
     static let shared = MPCHandler()
@@ -296,11 +284,11 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
         isStarted = true
 
         advertiser.startAdvertisingPeer()
-        print("✅ Started advertising")
+        print("Started advertising")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.browser.startBrowsingForPeers()
-            print("🔍 Started browsing for peers")
+            print("Started browsing for peers")
         }
     }
 
@@ -309,14 +297,14 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
         advertiser.stopAdvertisingPeer()
         browser.stopBrowsingForPeers()
         isStarted = false
-        print("🛑 Stopped MPC")
+        print("Stopped MPC")
     }
     
     func sendDiscoveryToken(_ token: NIDiscoveryToken) {
         guard !session.connectedPeers.isEmpty else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 self.sendDiscoveryToken(token)
-                print("⌛ Waiting for peers before sending token...")
+                print("Waiting for peers before sending token...")
             }
             return
         }
@@ -324,9 +312,9 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
         do {
             let data = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
             try session.send(data, toPeers: session.connectedPeers, with: .reliable)
-            print("📤 Sent NI token to peers")
+            print("Sent NI token to peers")
         } catch {
-            print("❌ Error sending NI token:", error)
+            print("Error sending NI token:", error)
         }
     }
     
@@ -338,44 +326,48 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
     }
     
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
-        print("❌ Advertiser failed: \(error.localizedDescription) \(error)")
+        print("Advertiser failed: \(error.localizedDescription) \(error)")
     }
 
     
     
     // MARK: - Browser Delegate
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
-        print("🔎 Found peer \(peerID.displayName), info: \(info ?? [:]) – inviting...")
+        print("Found peer \(peerID.displayName), info: \(info ?? [:]) – inviting...")
         browser.invitePeer(peerID, to: session, withContext: nil, timeout: 10)
     }
     
     func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
-        print("⚠️ Lost peer \(peerID.displayName)")
+        print("Lost peer \(peerID.displayName)")
     }
     
     func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
-        print("❌ Browser failed: \(error.localizedDescription) \(error)")
+        print("Browser failed: \(error.localizedDescription) \(error)")
     }
 
     
     // MARK: - Session Delegate
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
         switch state {
-        case .connected: print("✅ Connected to \(peerID.displayName)")
-        case .connecting: print("⌛ Connecting to \(peerID.displayName)...")
-        case .notConnected: print("❌ Not connected to \(peerID.displayName)")
-        @unknown default: print("❓ Unknown state for \(peerID.displayName)")
+        case .connected: print("Connected to \(peerID.displayName)")
+        case .connecting: print("Connecting to \(peerID.displayName)...")
+        case .notConnected: print("Not connected to \(peerID.displayName)")
+        @unknown default: print("Unknown state for \(peerID.displayName)")
         }
     }
     
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         do {
             if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
-                print("📥 Received NI token from \(peerID.displayName)")
+                print("Received NI token from \(peerID.displayName)")
+                if niSession == nil {
+                    setupNearbyInteraction()
+                }
                 niSession?.run(NINearbyPeerConfiguration(peerToken: token))
+
             }
         } catch {
-            print("❌ Error decoding NI token:", error)
+            print("Error decoding NI token:", error)
         }
     }
     
@@ -479,3 +471,69 @@ func sendPairingNotification(success: Bool) {
         }
     }
 }
+
+// MARK -
+func GeminiMatch() {
+    // 1. Get API key from Info.plist
+    guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_API_KEY") as? String else {
+        print("API Key not found!")
+        return
+    }
+
+    // 2. Set up the URL
+    guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent") else {
+        fatalError("Invalid URL")
+    }
+
+    // 3. Create the request
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue(apiKey, forHTTPHeaderField: "X-goog-api-key")
+
+    // 4. Request body
+    let requestBody: [String: Any] = [
+        "contents": [
+            [
+                "parts": [
+                    ["text": "Explain how AI works in a few words"]
+                ]
+            ]
+        ]
+    ]
+
+    // 5. Convert body to JSON
+    do {
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody, options: [])
+    } catch {
+        print("Error encoding JSON: \(error)")
+        return
+    }
+
+    // 6. Send the request
+    let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        if let error = error {
+            print("Request error: \(error)")
+            return
+        }
+
+        guard let data = data else {
+            print("No data received")
+            return
+        }
+
+        do {
+            if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                print("Response: \(json)")
+            } else {
+                print("Cannot parse JSON")
+            }
+        } catch {
+            print("JSON parse error: \(error)")
+        }
+    }
+
+    // 7. Start the task
+    task.resume()
+}
+

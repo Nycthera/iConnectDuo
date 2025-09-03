@@ -19,6 +19,7 @@ struct iConnectDuoApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(tabSelection)
+                .environmentObject(SelectedPhoto())
 
         }
     }

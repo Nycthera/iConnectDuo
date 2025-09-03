@@ -111,6 +111,7 @@
 			packageReferences = (
 				D98044752E5494B9007B7A17 /* XCRemoteSwiftPackageReference "sdk-for-swift" */,
 				D922A14E2E55C3C500CC4206 /* XCRemoteSwiftPackageReference "swift-dotenv" */,
+				D9BD4C822E686F5100F30538 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D99D71132E5024D7002D24EA;
@@ -273,7 +274,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = CKYWQ7BW84;
+				DEVELOPMENT_TEAM = 4PP5ZD3GV5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iConnectDuo/Info.plist;
@@ -307,7 +308,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = CKYWQ7BW84;
+				DEVELOPMENT_TEAM = 4PP5ZD3GV5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iConnectDuo/Info.plist;
@@ -370,6 +371,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 10.2.0;
+			};
+		};
+		D9BD4C822E686F5100F30538 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.2.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
