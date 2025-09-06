@@ -15,11 +15,45 @@ import Foundation
 import MapKit
 import CoreLocation
 
-
 // MARK: - Globals
 var niSession: NISession?
 var niToken: NIDiscoveryToken?
-var devMode: Bool = true   // <-- proper declaration
+var devMode: Bool = false   // <-- proper declaration
+
+// Stable device ID stored in UserDefaults
+var deviceID: String = {
+    if let saved = UserDefaults.standard.string(forKey: "simDeviceID") {
+        return saved
+    } else {
+        let newID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        UserDefaults.standard.set(newID, forKey: "simDeviceID")
+        return newID
+    }
+}()
+
+func grabApiKey() -> String {
+    return getConfigValue(for: "apiKey")
+}
+
+// MARK: - Notifications
+func testNotification() {
+    let content = UNMutableNotificationContent()
+    content.title = "Hello!"
+    content.body = "This is a test notification."
+    content.sound = .default
+
+    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+    let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                        content: content,
+                                        trigger: trigger)
+
+    UNUserNotificationCenter.current().add(request) { error in
+        if let error = error {
+            print("Error scheduling notification: \(error.localizedDescription)")
+        }
+    }
+}
+
 
 // MARK: - Camera Permission
 func checkCameraPermission() {
@@ -46,14 +80,11 @@ func setupNearbyInteraction() {
         return
     }
     
-    print("Nearby Interaction is supported")
-    
     if niSession == nil {
         niSession = NISession()
         niSession?.delegate = NIHandler.shared
     }
     
-    // Always try to run the session if we have a token
     if let token = niToken {
         niSession?.run(NINearbyPeerConfiguration(peerToken: token))
         print("NI session running with existing token")
@@ -82,21 +113,20 @@ func saveNITokenToUserDefaults(_ token: NIDiscoveryToken) {
 class NIHandler: NSObject, NISessionDelegate {
     static let shared = NIHandler()
     var isPaired = false
+
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        if let first = nearbyObjects.first, first.distance != nil {
-            if !isPaired {
-                isPaired = true
-                print("Paired with peer!")
-                sendPairingNotification(success: true)   // trigger success instantly
-            }
+        if let first = nearbyObjects.first, first.distance != nil, !isPaired {
+            isPaired = true
+            print("Paired with peer!")
+            sendPairingNotification(success: true)
+            
+            // Automatically request peer UUID after pairing
+            MPCHandler.shared.requestPeerUUIDs()
         }
     }
     
-    // MARK: - NI Session Resilience
     func session(_ session: NISession, didInvalidateWith error: Error) {
         print("NI Session invalidated: \(error.localizedDescription)")
-
-        // Auto-restart after short delay
         if let token = niToken {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 session.run(NINearbyPeerConfiguration(peerToken: token))
@@ -107,8 +137,6 @@ class NIHandler: NSObject, NISessionDelegate {
 
     func sessionWasSuspended(_ session: NISession) {
         print("NI Session was suspended")
-
-        // Auto-resume after suspension
         if let token = niToken {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 session.run(NINearbyPeerConfiguration(peerToken: token))
@@ -122,48 +150,38 @@ class NIHandler: NSObject, NISessionDelegate {
             if isPaired {
                 isPaired = false
                 print("Lost connection with peer.")
-                sendPairingNotification(success: false)  // trigger failure instantly
+                sendPairingNotification(success: false)
             }
         }
     }
 }
 
 // MARK: - Notifications
-func testNotification() {
+func sendPairingNotification(success: Bool) {
     let content = UNMutableNotificationContent()
-    content.title = "Hello!"
-    content.body = "This is a test notification."
+    content.title = success ? "Pairing Successful 🎉" : "Pairing Failed ❌"
+    content.body = success ? "You’re now connected with the other user." : "Could not establish a connection. Try again."
     content.sound = .default
 
-    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
-    let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                        content: content,
-                                        trigger: trigger)
+    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
 
     UNUserNotificationCenter.current().add(request) { error in
         if let error = error {
-            print("Error scheduling notification: \(error.localizedDescription)")
+            print("Notification scheduling error: \(error)")
         }
     }
 }
 
 func requestNotificationPermission() {
-    let center = UNUserNotificationCenter.current()
-    center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-        if granted {
-            print("Notifications permission granted")
-        } else {
-            print("Notifications permission denied")
-            if let error = error {
-                print("Error: \(error.localizedDescription)")
-            }
-        }
+    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+        print(granted ? "Notifications permission granted" : "Notifications permission denied")
+        if let error = error { print("Error: \(error.localizedDescription)") }
     }
 }
 
 class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationHandler()
-
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler:
@@ -180,19 +198,13 @@ func getConfigValue(for key: String) -> String {
     return value
 }
 
-func grabApiKey() -> String {
-    return getConfigValue(for: "apiKey")
-}
-
-// MARK: - Save quiz answers to Appwrite
+// MARK: - Appwrite quiz saving
 func saveAnswersToAppwrite(selectedAnswers: [UUID: String], questions: [QuizView.Question]) async {
     let databaseId = getConfigValue(for: "appwriteDatabaseID")
     let collectionId = getConfigValue(for: "appwriteCollectionID")
     
-    let userID = await UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
-    
     var answersArray: [String] = []
-    answersArray.append(userID)
+    answersArray.append(deviceID)
     
     for (index, question) in questions.enumerated() {
         let answer = selectedAnswers[question.id] ?? "NA"
@@ -200,9 +212,10 @@ func saveAnswersToAppwrite(selectedAnswers: [UUID: String], questions: [QuizView
     }
     
     let documentData: [String: Any] = [
-        "userID": userID,
+        "userID": deviceID,
         "userAnswers": answersArray
     ]
+    
     let databases = Databases(AppwriteService.shared.client)
     
     if devMode {
@@ -221,20 +234,19 @@ func saveAnswersToAppwrite(selectedAnswers: [UUID: String], questions: [QuizView
         }
     }
 }
+
 func fetchAnswersFromAppwrite() async {
     let databaseId = getConfigValue(for: "appwriteDatabaseID")
     let collectionId = getConfigValue(for: "appwriteCollectionID")
-    let deviceID = await UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+    
     let databases = Databases(AppwriteService.shared.client)
     do {
         let documents = try await databases.listDocuments(
             databaseId: databaseId,
             collectionId: collectionId,
-            queries: [
-                Query.equal("userID", value: deviceID)
-            ]
+            queries: [Query.equal("userID", value: deviceID)]
         )
-
+        
         if documents.documents.isEmpty {
             print("No documents found for userID: \(deviceID)")
         } else {
@@ -243,16 +255,23 @@ func fetchAnswersFromAppwrite() async {
                 print("Data: \(doc.data)")
             }
         }
+    } catch {
+        print("Error fetching documents: \(error)")
     }
-    catch {
-        print("Error with grabbing documents: \(error)")
-    }
-
 }
 
+// MARK: - MPCHandler & UUID exchange
+enum MessageType: String, Codable {
+    case requestUUID
+    case responseUUID
+    case requestLocation
+    case responseLocation
+}
 
-
-
+struct Message: Codable {
+    let type: MessageType
+    let payload: String?
+}
 
 class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate, ObservableObject {
     static let shared = MPCHandler()
@@ -264,14 +283,19 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
     private var browser: MCNearbyServiceBrowser!
     var isStarted = false
     
+    @Published var peerDeviceIDs: [String] = []
+    @Published var peerLocations: [String: CLLocationCoordinate2D] = [:]
+    
     override init() {
-        peerID = MCPeerID(displayName: UIDevice.current.name + "-" + UUID().uuidString.prefix(4))
+        peerID = MCPeerID(displayName: deviceID.prefix(8).description)
         super.init()
         
         session = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
         
-        advertiser = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: ["role": "sender"], serviceType: serviceType)
+        advertiser = MCNearbyServiceAdvertiser(peer: peerID,
+                                               discoveryInfo: ["role": "sender", "deviceID": deviceID],
+                                               serviceType: serviceType)
         advertiser.delegate = self
         
         browser = MCNearbyServiceBrowser(peer: peerID, serviceType: serviceType)
@@ -279,19 +303,17 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
     }
     
     func start() {
-        guard !isStarted else { return }   // already started
-        stop() // optional: ensure clean slate
+        guard !isStarted else { return }
+        stop()
         isStarted = true
-
+        
         advertiser.startAdvertisingPeer()
         print("Started advertising")
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.browser.startBrowsingForPeers()
             print("Started browsing for peers")
         }
     }
-
     
     func stop() {
         advertiser.stopAdvertisingPeer()
@@ -304,11 +326,9 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
         guard !session.connectedPeers.isEmpty else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 self.sendDiscoveryToken(token)
-                print("Waiting for peers before sending token...")
             }
             return
         }
-        
         do {
             let data = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
             try session.send(data, toPeers: session.connectedPeers, with: .reliable)
@@ -318,35 +338,41 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
         }
     }
     
-    // MARK: - Advertiser Delegate
-    func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID,
-                    withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
-        print("📩 Received invitation from \(peerID.displayName)")
-        invitationHandler(true, session)
+    func requestPeerUUIDs() {
+        let message = Message(type: .requestUUID, payload: nil)
+        guard !session.connectedPeers.isEmpty else {
+            print("No connected peers to request UUID from")
+            return
+        }
+        do {
+            let data = try JSONEncoder().encode(message)
+            try session.send(data, toPeers: session.connectedPeers, with: .reliable)
+            print("Sent UUID request to peers")
+        } catch {
+            print("Failed to send UUID request:", error)
+        }
     }
     
-    func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
-        print("Advertiser failed: \(error.localizedDescription) \(error)")
-    }
+    func requestPeerLocations() {
+            let message = Message(type: .requestLocation, payload: nil)
+            sendToAllPeers(message)
+            print(message)
+        }
+    
+    func debugPrintPeers() {
+            print("==== Connected Peers ====")
+            for uuid in peerDeviceIDs {
+                if let loc = peerLocations[uuid] {
+                    print("UUID: \(uuid) — Location: \(loc.latitude), \(loc.longitude)")
+                } else {
+                    print("UUID: \(uuid) — Location: unknown")
+                }
+            }
+            print("========================")
+        }
 
     
-    
-    // MARK: - Browser Delegate
-    func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
-        print("Found peer \(peerID.displayName), info: \(info ?? [:]) – inviting...")
-        browser.invitePeer(peerID, to: session, withContext: nil, timeout: 10)
-    }
-    
-    func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
-        print("Lost peer \(peerID.displayName)")
-    }
-    
-    func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
-        print("Browser failed: \(error.localizedDescription) \(error)")
-    }
-
-    
-    // MARK: - Session Delegate
+    // MARK: - MCSessionDelegate
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
         switch state {
         case .connected: print("Connected to \(peerID.displayName)")
@@ -356,31 +382,98 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
         }
     }
     
-    func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+    private func sendToAllPeers(_ message: Message) {
+        guard !session.connectedPeers.isEmpty else { return }
         do {
-            if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
-                print("Received NI token from \(peerID.displayName)")
-                if niSession == nil {
-                    setupNearbyInteraction()
-                }
-                niSession?.run(NINearbyPeerConfiguration(peerToken: token))
-
-            }
+            let data = try JSONEncoder().encode(message)
+            try session.send(data, toPeers: session.connectedPeers, with: .reliable)
         } catch {
-            print("Error decoding NI token:", error)
+            print("Failed to send message to all peers:", error)
         }
     }
+
     
-    // Unused delegate stubs
+    func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+            do {
+                // NI token handling...
+                if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
+                    if niSession == nil { setupNearbyInteraction() }
+                    niSession?.run(NINearbyPeerConfiguration(peerToken: token))
+                    return
+                }
+
+                let message = try JSONDecoder().decode(Message.self, from: data)
+                switch message.type {
+                case .requestUUID:
+                    sendMessage(.responseUUID, payload: deviceID, to: [peerID])
+                case .responseUUID:
+                    if let uuid = message.payload, !peerDeviceIDs.contains(uuid) {
+                        peerDeviceIDs.append(uuid)
+                        print("Received peer UUID: \(uuid)")
+                        requestPeerLocations()  // Automatically request location after UUID
+                    }
+                case .requestLocation:
+                    if let location = LocationManager.shared.userLocation {
+                        let payload = "\(location.coordinate.latitude),\(location.coordinate.longitude)"
+                        sendMessage(.responseLocation, payload: payload, to: [peerID])
+                    }
+                case .responseLocation:
+                    if let payload = message.payload,
+                       let uuid = peerDeviceIDs.first {  // assume single peer for simplicity
+                        let parts = payload.split(separator: ",").compactMap { Double($0) }
+                        if parts.count == 2 {
+                            let lat = parts[0]
+                            let lon = parts[1]
+                            peerLocations[uuid] = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                            print("Updated location for peer \(uuid): \(lat), \(lon)")
+                        }
+                    }
+
+                }
+            } catch {
+                print("Error decoding received data:", error)
+            }
+        }
+
+        // Helper to send message to specific peers
+        private func sendMessage(_ type: MessageType, payload: String?, to peers: [MCPeerID]) {
+            let message = Message(type: type, payload: payload)
+            do {
+                let data = try JSONEncoder().encode(message)
+                try session.send(data, toPeers: peers, with: .reliable)
+            } catch {
+                print("Failed to send message:", error)
+            }
+        }
+    
+    // MARK: - Unused delegate stubs
     func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {}
     func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {}
     func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) {}
+    
+    // MARK: - Advertiser Delegate
+    func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID,
+                    withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
+        invitationHandler(true, session)
+    }
+    
+    func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
+        print("Advertiser failed: \(error.localizedDescription)")
+    }
+    
+    // MARK: - Browser Delegate
+    func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
+        browser.invitePeer(peerID, to: session, withContext: nil, timeout: 10)
+    }
+    
+    func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {}
+    func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {}
 }
-
 
 // MARK: - Location Manager
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
+    static let shared = LocationManager()
     
     @Published var userLocation: CLLocation?
     @Published var userRegion: MKCoordinateRegion = MKCoordinateRegion(
@@ -388,8 +481,6 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     @Published var hasPermission = false
-    
-    // <<< Add this property
     private var permissionCompletion: ((Bool) -> Void)?
     
     override init() {
@@ -413,7 +504,6 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
     
-    // Updated request function
     func requestLocationPermission(completion: ((Bool) -> Void)? = nil) {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
@@ -454,25 +544,6 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 }
 
-
-// Function to trigger a notification
-func sendPairingNotification(success: Bool) {
-    let content = UNMutableNotificationContent()
-    content.title = success ? "Pairing Successful 🎉" : "Pairing Failed ❌"
-    content.body = success ? "You’re now connected with the other user." : "Could not establish a connection. Try again."
-    content.sound = .default
-
-    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-
-    UNUserNotificationCenter.current().add(request) { error in
-        if let error = error {
-            print("Notification scheduling error: \(error)")
-        }
-    }
-}
-
-// MARK -
 func GeminiMatch() {
     // 1. Get API key from Info.plist
     guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_API_KEY") as? String else {
@@ -536,4 +607,3 @@ func GeminiMatch() {
     // 7. Start the task
     task.resume()
 }
-

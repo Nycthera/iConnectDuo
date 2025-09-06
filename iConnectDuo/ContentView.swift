@@ -22,7 +22,9 @@ struct ContentView: View {
     @State private var showQuizRules = false
     @State private var deviceID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
     @AppStorage("quizCompleted") private var quizCompleted = false  // <-- persist state
-    @StateObject private var locationManager = LocationManager()
+    @StateObject private var locationManager = LocationManager.shared
+    @StateObject var mpc = MPCHandler()
+
     
     var body: some View {
         NavigationStack {
@@ -106,6 +108,7 @@ struct ContentView: View {
                             testNotification()
                             setupNearbyInteraction()
                             let key = grabApiKey()
+                            mpc.requestPeerUUIDs()
                             print("API key grabbed: \(key)")
                             
                             locationManager.requestLocationPermission { granted in
@@ -495,6 +498,8 @@ struct DashBoardView: View {
                 locationManager.checkPermission()
                 setupNearbyInteraction()
                 GeminiMatch()
+                mpc.requestPeerLocations()
+                mpc.requestPeerUUIDs()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { // 1s buffer
                     if !MPCHandler.shared.isStarted {
                         MPCHandler.shared.start()
@@ -502,6 +507,14 @@ struct DashBoardView: View {
                             MPCHandler.shared.sendDiscoveryToken(token)
                         }
                     }
+                }
+                
+            }
+            .onReceive(locationManager.$userLocation) { loc in
+                if let loc = loc {
+                    print("User location updated: \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
+                } else {
+                    print("User location is nil")
                 }
             }
         

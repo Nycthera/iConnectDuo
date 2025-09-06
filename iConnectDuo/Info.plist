@@ -4,22 +4,10 @@
 <dict>
 	<key>GOOGLE_API_KEY</key>
 	<string>${gemini_api_key}</string>
-	<key>apiKey</key>
-	<string>${apiKey}</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>We need your location to show nearby users even when app is in background.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We need your location to show you on the map.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>We need local network usage for Multipeer Connectivity</string>
-	<key>appwriteCollectionID</key>
-	<string>${appwriteDatabaseID}</string>
-	<key>appwriteDatabaseID</key>
-	<string>${appwriteCollectionID}</string>
-	<key>NSCameraUsageDescription</key>
-	<string>We need camera access to take photos.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>We need microphone access for audio recording.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_iconnect-ni._tcp</string>
+	</array>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>We use notifications to remind you about quizzes and matches.</string>
 	<key>UIBackgroundModes</key>
@@ -27,9 +15,11 @@
 		<string>remote-notification</string>
 		<string>nearby-interaction</string>
 	</array>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_iconnect-ni._tcp</string>
-	</array>
+	<key>apiKey</key>
+	<string>${apiKey}</string>
+	<key>appwriteCollectionID</key>
+	<string>${appwriteDatabaseID}</string>
+	<key>appwriteDatabaseID</key>
+	<string>${appwriteCollectionID}</string>
 </dict>
 </plist>

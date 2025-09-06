@@ -279,6 +279,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iConnectDuo/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to take photos.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "We need local network usage for Multipeer Connectivity";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby users even when app is in background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show you on the map.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need microphone access for audio recording.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -291,7 +294,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = team.iConnectDuo;
+				PRODUCT_BUNDLE_IDENTIFIER = me.iConnectDuo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -313,6 +316,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iConnectDuo/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to take photos.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "We need local network usage for Multipeer Connectivity";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby users even when app is in background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show you on the map.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need microphone access for audio recording.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -325,7 +331,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = team.iConnectDuo;
+				PRODUCT_BUNDLE_IDENTIFIER = me.iConnectDuo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
