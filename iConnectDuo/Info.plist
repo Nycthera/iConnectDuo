@@ -12,8 +12,9 @@
 	<string>We use notifications to remind you about quizzes and matches.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>remote-notification</string>
 		<string>nearby-interaction</string>
+		<string>location</string>
+		<string>remote-notification</string>
 	</array>
 	<key>apiKey</key>
 	<string>${apiKey}</string>

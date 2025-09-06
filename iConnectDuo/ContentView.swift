@@ -498,8 +498,8 @@ struct DashBoardView: View {
                 locationManager.checkPermission()
                 setupNearbyInteraction()
                 GeminiMatch()
-                mpc.requestPeerLocations()
-                mpc.requestPeerUUIDs()
+                MPCHandler.shared.requestPeerUUIDs()
+                MPCHandler.shared.requestPeerLocations()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { // 1s buffer
                     if !MPCHandler.shared.isStarted {
                         MPCHandler.shared.start()

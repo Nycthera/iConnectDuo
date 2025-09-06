@@ -54,7 +54,6 @@ func testNotification() {
     }
 }
 
-
 // MARK: - Camera Permission
 func checkCameraPermission() {
     switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -85,17 +84,13 @@ func setupNearbyInteraction() {
         niSession?.delegate = NIHandler.shared
     }
     
-    if let token = niToken {
-        niSession?.run(NINearbyPeerConfiguration(peerToken: token))
-        print("NI session running with existing token")
-    } else if let token = niSession?.discoveryToken {
-        niToken = token
-        saveNITokenToUserDefaults(token)
-        niSession?.run(NINearbyPeerConfiguration(peerToken: token))
-        print("NI session running with new token: \(token)")
-    } else {
-        print("Failed to get NI discovery token")
+    func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+        if let peerToken = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
+            niSession?.run(NINearbyPeerConfiguration(peerToken: peerToken))
+            print("NI session started with peer token")
+        }
     }
+
 }
 
 func saveNITokenToUserDefaults(_ token: NIDiscoveryToken) {
@@ -266,12 +261,30 @@ enum MessageType: String, Codable {
     case responseUUID
     case requestLocation
     case responseLocation
+    case notifyRequestSuccess
 }
 
 struct Message: Codable {
     let type: MessageType
     let payload: String?
 }
+
+func sendLocalNotification(title: String, body: String) {
+    let content = UNMutableNotificationContent()
+    content.title = title
+    content.body = body
+    content.sound = .default
+
+    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+
+    UNUserNotificationCenter.current().add(request) { error in
+        if let error = error {
+            print("Notification scheduling error: \(error.localizedDescription)")
+        }
+    }
+}
+
 
 class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate, ObservableObject {
     static let shared = MPCHandler()
@@ -339,25 +352,34 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
     }
     
     func requestPeerUUIDs() {
-        let message = Message(type: .requestUUID, payload: nil)
         guard !session.connectedPeers.isEmpty else {
-            print("No connected peers to request UUID from")
+            print("No connected peers yet, retrying UUID request...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.requestPeerUUIDs() // retry until a peer connects
+            }
             return
         }
-        do {
-            let data = try JSONEncoder().encode(message)
-            try session.send(data, toPeers: session.connectedPeers, with: .reliable)
-            print("Sent UUID request to peers")
-        } catch {
-            print("Failed to send UUID request:", error)
-        }
+
+        let message = Message(type: .requestUUID, payload: nil)
+        sendToAllPeers(message)
+        sendToAllPeers(Message(type: .notifyRequestSuccess, payload: "UUID request received"))
     }
+
     
     func requestPeerLocations() {
-            let message = Message(type: .requestLocation, payload: nil)
-            sendToAllPeers(message)
-            print(message)
+        guard !session.connectedPeers.isEmpty else {
+            print("No connected peers yet, retrying location request...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.requestPeerLocations() // retry until a peer connects
+            }
+            return
         }
+
+        let message = Message(type: .requestLocation, payload: nil)
+        sendToAllPeers(Message(type: .notifyRequestSuccess, payload: "loc request received"))
+        print("Sent location request to peers")
+    }
+
     
     func debugPrintPeers() {
             print("==== Connected Peers ====")
@@ -371,6 +393,7 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
             print("========================")
         }
 
+    
     
     // MARK: - MCSessionDelegate
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
@@ -429,6 +452,10 @@ class MPCHandler: NSObject, MCSessionDelegate, MCNearbyServiceAdvertiserDelegate
                         }
                     }
 
+                case .notifyRequestSuccess:
+                    if let info = message.payload {
+                           sendLocalNotification(title: "Request Success ✅", body: info)
+                       }
                 }
             } catch {
                 print("Error decoding received data:", error)
