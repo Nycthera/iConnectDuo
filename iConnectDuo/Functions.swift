@@ -406,7 +406,10 @@
         }
         
         private func sendToAllPeers(_ message: Message) {
-            guard !session.connectedPeers.isEmpty else { return }
+            guard !session.connectedPeers.isEmpty else {
+                print("No connected peers, cannot send message")
+                return
+            }
             do {
                 let data = try JSONEncoder().encode(message)
                 try session.send(data, toPeers: session.connectedPeers, with: .reliable)
@@ -417,50 +420,53 @@
 
         
         func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-                do {
-                    // NI token handling...
-                    if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
-                        if niSession == nil { setupNearbyInteraction() }
-                        niSession?.run(NINearbyPeerConfiguration(peerToken: token))
-                        return
+            if let message = try? JSONDecoder().decode(Message.self, from: data) {
+                switch message.type {
+                case .requestUUID:
+                    sendMessage(.responseUUID, payload: deviceID, to: [peerID])
+                case .responseUUID:
+                    if let uuid = message.payload, !peerDeviceIDs.contains(uuid) {
+                        peerDeviceIDs.append(uuid)
+                        print("Received peer UUID: \(uuid)")
+                        requestPeerLocations()
                     }
-
-                    let message = try JSONDecoder().decode(Message.self, from: data)
-                    switch message.type {
-                    case .requestUUID:
-                        sendMessage(.responseUUID, payload: deviceID, to: [peerID])
-                    case .responseUUID:
-                        if let uuid = message.payload, !peerDeviceIDs.contains(uuid) {
-                            peerDeviceIDs.append(uuid)
-                            print("Received peer UUID: \(uuid)")
-                            requestPeerLocations()  // Automatically request location after UUID
-                        }
-                    case .requestLocation:
-                        if let location = LocationManager.shared.userLocation {
-                            let payload = "\(location.coordinate.latitude),\(location.coordinate.longitude)"
-                            sendMessage(.responseLocation, payload: payload, to: [peerID])
-                        }
-                    case .responseLocation:
-                        if let payload = message.payload,
-                           let uuid = peerDeviceIDs.first {  // assume single peer for simplicity
-                            let parts = payload.split(separator: ",").compactMap { Double($0) }
-                            if parts.count == 2 {
-                                let lat = parts[0]
-                                let lon = parts[1]
-                                peerLocations[uuid] = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-                                print("Updated location for peer \(uuid): \(lat), \(lon)")
-                            }
-                        }
-
-                    case .notifyRequestSuccess:
-                        if let info = message.payload {
-                               sendLocalNotification(title: "Request Success ✅", body: info)
-                           }
+                case .requestLocation:
+                    if let location = LocationManager.shared.userLocation {
+                        let payload = "\(location.coordinate.latitude),\(location.coordinate.longitude)"
+                        sendMessage(.responseLocation, payload: payload, to: [peerID])
                     }
-                } catch {
-                    print("Error decoding received data:", error)
+                case .responseLocation:
+                    if let payload = message.payload,
+                       let uuid = peerDeviceIDs.first { // assume single peer
+                        let parts = payload.split(separator: ",").compactMap { Double($0) }
+                        if parts.count == 2 {
+                            let lat = parts[0]
+                            let lon = parts[1]
+                            peerLocations[uuid] = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                            print("Updated location for peer \(uuid): \(lat), \(lon)")
+                        }
+                    }
+                case .notifyRequestSuccess:
+                    if let info = message.payload {
+                        sendLocalNotification(title: "Request Success", body: info)
+                        print("success")
+                    }
                 }
+                return
             }
+
+            // 2️⃣ If JSON decoding failed, try decoding as NIDiscoveryToken
+            if let token = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
+                if niSession == nil { setupNearbyInteraction() }
+                niSession?.run(NINearbyPeerConfiguration(peerToken: token))
+                print("Received NI token from peer \(peerID.displayName)")
+                return
+            }
+
+            // 3️⃣ If neither worked, log
+            print("Received unknown data from peer \(peerID.displayName): \(data)")
+        }
+
 
             // Helper to send message to specific peers
             private func sendMessage(_ type: MessageType, payload: String?, to peers: [MCPeerID]) {
