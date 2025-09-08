@@ -108,7 +108,6 @@ struct ContentView: View {
                             testNotification()
                             setupNearbyInteraction()
                             let key = grabApiKey()
-                            mpc.requestPeerUUIDs()
                             print("API key grabbed: \(key)")
                             
                             locationManager.requestLocationPermission { granted in
@@ -439,6 +438,7 @@ struct DashBoardView: View {
     @EnvironmentObject var tabSelection: TabSelection
     @StateObject private var mpc = MPCHandler.shared
     var values = 1...10000
+    var allowRequestes: Bool = false
     
     var body: some View {
             TabView(selection: $tabSelection.selectedTab) {
@@ -506,8 +506,12 @@ struct DashBoardView: View {
                         }
                     }
                     mpc.debugPrintPeers()
-                    MPCHandler.shared.requestPeerUUIDs()
-                    MPCHandler.shared.requestPeerLocations()
+                    if allowRequestes == true {
+                        MPCHandler.shared.requestPeerUUIDs()
+                        MPCHandler.shared.requestPeerLocations()
+                    } else {
+                        print("requests not allowed")
+                    }
                 }
                 
             }

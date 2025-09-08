@@ -18,11 +18,11 @@
     // MARK: - Globals
     var niSession: NISession?
     var niToken: NIDiscoveryToken?
-    var devMode: Bool = true   // <-- proper declaration
+    var devMode: Bool = false  // <-- proper declaration
 
     // Stable device ID stored in UserDefaults
     var deviceID: String = {
-        if let saved = UserDefaults.standard.string(forKey: "simDeviceID") {
+        if let saved = UserDefaults.standard.string(forKey: "simDeviceID") { 
             return saved
         } else {
             let newID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
@@ -195,9 +195,9 @@
 
     // MARK: - Appwrite quiz saving
     func saveAnswersToAppwrite(selectedAnswers: [UUID: String], questions: [QuizView.Question]) async {
-        let databaseId = getConfigValue(for: "appwriteDatabaseID")
-        let collectionId = getConfigValue(for: "appwriteCollectionID")
-        
+        let databaseId = "68a5944f0006ab9ec718"
+        let collectionId = "68a59456002a3091735d"
+        print(databaseId, collectionId)
         var answersArray: [String] = []
         answersArray.append(deviceID)
         
@@ -228,6 +228,7 @@
                 print("Error saving document:", error)
             }
         }
+
     }
 
     func fetchAnswersFromAppwrite() async {
