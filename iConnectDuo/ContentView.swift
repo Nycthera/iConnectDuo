@@ -15,6 +15,7 @@ class SelectedPhoto: ObservableObject {
     @Published var selectedItem: PhotosPickerItem?
 }
 
+
 struct ContentView: View {
     @State private var username: String = ""
     @State private var selectedQ1: Int? = nil
@@ -438,207 +439,232 @@ struct DashBoardView: View {
     @EnvironmentObject var tabSelection: TabSelection
     @StateObject private var mpc = MPCHandler.shared
     var values = 1...10000
-    var allowRequestes: Bool = false
+    var allowRequestes: Bool = true
     
     var body: some View {
-            TabView(selection: $tabSelection.selectedTab) {
-                
-                // Map tab
-                Group {
-                    if locationManager.hasPermission {
-                        Map(coordinateRegion: $locationManager.userRegion, showsUserLocation: true)
-                            .edgesIgnoringSafeArea(.all)
-                    } else {
-                        VStack(spacing: 20) {
-                            Text("Location access is required to show your position on the map.")
-                                .multilineTextAlignment(.center)
-                                .padding()
-                            
-                            Button("Grant Permission") {
-                                locationManager.requestLocationPermission { granted in
-                                    if !granted {
-                                        showDeniedAlert = true
-                                    }
+        TabView(selection: $tabSelection.selectedTab) {
+            
+            // Map tab
+            Group {
+                if locationManager.hasPermission {
+                    Map(coordinateRegion: $locationManager.userRegion, showsUserLocation: true)
+                        .edgesIgnoringSafeArea(.all)
+                } else {
+                    VStack(spacing: 20) {
+                        Text("Location access is required to show your position on the map.")
+                            .multilineTextAlignment(.center)
+                            .padding()
+                        
+                        Button("Grant Permission") {
+                            locationManager.requestLocationPermission { granted in
+                                if !granted {
+                                    showDeniedAlert = true
                                 }
                             }
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                            .navigationBarBackButtonHidden(true)
-                            .alert("Location Permission Denied", isPresented: $showDeniedAlert) {
-                                Button("OK", role: .cancel) {}
-                            } message: {
-                                Text("Please enable location access in Settings to use the map.")
-                            }
                         }
-                    }
-                }
-                .tabItem {
-                    Label("Map", systemImage: "map.fill")
-                }
-                .tag(0)
-                
-                // Profile tab
-                ProfileView()
-                    .tabItem {
-                        Label("Profile", systemImage: "person.fill")
-                    }
-                    .tag(1)
-                
-                // Example Settings tab
-                SettingsView()
-                    .tabItem {
-                        Label("Settings", systemImage: "gearshape.fill")
-                    }
-                    .tag(2)
-            }
-            
-            .onAppear {
-                locationManager.checkPermission()
-                setupNearbyInteraction()
-                GeminiMatch()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { // 1s buffer
-                    if !MPCHandler.shared.isStarted {
-                        MPCHandler.shared.start()
-                        if let token = niToken {
-                            MPCHandler.shared.sendDiscoveryToken(token)
-                        }
-                    }
-                    mpc.debugPrintPeers()
-                    if allowRequestes == true {
-                        MPCHandler.shared.requestPeerUUIDs()
-                        MPCHandler.shared.requestPeerLocations()
-                    } else {
-                        print("requests not allowed")
-                    }
-                }
-                
-            }
-            .onReceive(locationManager.$userLocation) { loc in
-                if let loc = loc {
-                    print("User location updated: \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
-                } else {
-                    print("User location is nil")
-                }
-            }
-        
-        }
-    }
-
-
-
-// Make sure ProfileView conforms to View
-struct SettingsView: View {
-    @EnvironmentObject var tabSelection: TabSelection
-    
-    var body: some View {
-        VStack {
-            Text("Hello, Profile!")
-                .font(.title)
-            Button("Go to Map Tab") {
-                tabSelection.selectedTab = 0
-            }
-            .padding()
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(10)
-        }
-    }
-}
-
-// Optional Settings tab
-struct ProfileView: View {
-    @EnvironmentObject var userData: SelectedPhoto  // shared across views
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 30) {
-                Text("Settings")
-                    .font(.largeTitle)
-                    .bold()
-
-                // Profile Photo Picker
-                ProfilePhotoPickerView(
-                    selectedImageData: $userData.selectedImageData,
-                    selectedItem: $userData.selectedItem
-                )
-
-                // Save Button
-                Button(action: saveUserData) {
-                    Text("Save")
-                        .font(.title2)
-                        .frame(width: 200, height: 50)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                }
-
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-        }
-    }
-
-    func saveUserData() {
-        // Persist the selected image locally
-        if let data = userData.selectedImageData {
-            UserDefaults.standard.set(data.base64EncodedString(), forKey: "profileImageData")
-            print("Profile photo saved!")
-        }
-    }
-}
-
-
-
-struct ProfilePhotoPickerView: View {
-    @Binding var selectedImageData: Data?
-    @Binding var selectedItem: PhotosPickerItem?
-
-    var body: some View {
-        VStack(spacing: 20) {
-            if let data = selectedImageData,
-               let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 200)
-                    .clipShape(Circle())
-                    .shadow(radius: 10)
-            } else {
-                Circle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 200, height: 200)
-                    .overlay(Text("Profile Picture"))
-            }
-
-            PhotosPicker(
-                selection: $selectedItem,
-                matching: .images,
-                photoLibrary: .shared()) {
-                    Label("Choose Photo", systemImage: "photo")
                         .padding()
                         .background(Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(10)
-            }
-        }
-        .task(id: selectedItem) {
-            if let item = selectedItem {
-                if let data = try? await item.loadTransferable(type: Data.self) {
-                    selectedImageData = data
-                    UserDefaults.standard.set(data.base64EncodedString(), forKey: "profileImageData")
+                        .navigationBarBackButtonHidden(true)
+                        .alert("Location Permission Denied", isPresented: $showDeniedAlert) {
+                            Button("OK", role: .cancel) {}
+                        } message: {
+                            Text("Please enable location access in Settings to use the map.")
+                        }
+                    }
                 }
             }
+            .tabItem {
+                Label("Map", systemImage: "map.fill")
+            }
+            .tag(0)
+            
+            // Profile tab
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.fill")
+                }
+                .tag(1)
+            
+            // Example Settings tab
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
+                .tag(2)
         }
+        
         .onAppear {
-            // Load saved profile image
-            if let saved = UserDefaults.standard.string(forKey: "profileImageData"),
-               let data = Data(base64Encoded: saved) {
-                selectedImageData = data
+            locationManager.checkPermission()
+            
+            setupNearbyInteraction()
+            
+            // 3️⃣ Start MPC after a short delay to let NI session initialize
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                if !MPCHandler.shared.isStarted {
+                    MPCHandler.shared.start()
+                    
+                    // Send NI token if available
+                    if let token = niToken {
+                        MPCHandler.shared.sendDiscoveryToken(token)
+                    }
+                }
+                
+                mpc.debugPrintPeers()
+                
+                if allowRequestes {
+                    MPCHandler.shared.requestPeerUUIDs()
+                    MPCHandler.shared.requestPeerLocations()
+                } else {
+                    print("Requests not allowed")
+                }
+            }
+            
+            Task {
+                await getPeerMatchingData()
+                await getOwnMatchingData()
+                
+                await MainActor.run {
+                    geminiMatchImproved { result in
+                        geminiResponse = result
+                        MatchNotifier().successNotification(result: result)
+                        if geminiResponse.contains("Yes") {
+                            playNukeSound()
+                        }
+                    }
+                }
+            }
+
+            print("should be playing sound here")
+            configureAudioSession()
+  
+
+
+        }
+        .onReceive(locationManager.$userLocation) { loc in
+            if let loc = loc {
+                print("User location updated: \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
+            } else {
+                print("User location is nil")
+            }
+        }
+    }
+    
+    
+    
+    // Make sure ProfileView conforms to View
+    struct SettingsView: View {
+        @EnvironmentObject var tabSelection: TabSelection
+        
+        var body: some View {
+            VStack {
+                Text("Hello, Profile!")
+                    .font(.title)
+                Button("Go to Map Tab") {
+                    tabSelection.selectedTab = 0
+                }
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+        }
+    }
+    
+    // Optional Settings tab
+    struct ProfileView: View {
+        @EnvironmentObject var userData: SelectedPhoto  // shared across views
+        
+        var body: some View {
+            NavigationStack {
+                VStack(spacing: 30) {
+                    Text("Settings")
+                        .font(.largeTitle)
+                        .bold()
+                    
+                    // Profile Photo Picker
+                    ProfilePhotoPickerView(
+                        selectedImageData: $userData.selectedImageData,
+                        selectedItem: $userData.selectedItem
+                    )
+                    
+                    // Save Button
+                    Button(action: saveUserData) {
+                        Text("Save")
+                            .font(.title2)
+                            .frame(width: 200, height: 50)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                    }
+                    
+                    Spacer()
+                }
+                .padding()
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarBackButtonHidden(true)
+            }
+        }
+        
+        func saveUserData() {
+            // Persist the selected image locally
+            if let data = userData.selectedImageData {
+                UserDefaults.standard.set(data.base64EncodedString(), forKey: "profileImageData")
+                print("Profile photo saved!")
+            }
+        }
+    }
+    
+    
+    
+    struct ProfilePhotoPickerView: View {
+        @Binding var selectedImageData: Data?
+        @Binding var selectedItem: PhotosPickerItem?
+        
+        var body: some View {
+            VStack(spacing: 20) {
+                if let data = selectedImageData,
+                   let uiImage = UIImage(data: data) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 200)
+                        .clipShape(Circle())
+                        .shadow(radius: 10)
+                } else {
+                    Circle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 200, height: 200)
+                        .overlay(Text("Profile Picture"))
+                }
+                
+                PhotosPicker(
+                    selection: $selectedItem,
+                    matching: .images,
+                    photoLibrary: .shared()) {
+                        Label("Choose Photo", systemImage: "photo")
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+            }
+            .task(id: selectedItem) {
+                if let item = selectedItem {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        selectedImageData = data
+                        UserDefaults.standard.set(data.base64EncodedString(), forKey: "profileImageData")
+                    }
+                }
+            }
+            .onAppear {
+                // Load saved profile image
+                if let saved = UserDefaults.standard.string(forKey: "profileImageData"),
+                   let data = Data(base64Encoded: saved) {
+                    selectedImageData = data
+                }
             }
         }
     }
